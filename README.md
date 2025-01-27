@@ -2,4 +2,4 @@
 
 ## Introducción
 
-En este repositorio vamos a ir subiendo los archivos necesarios, los cuales han sido utilizados en el segundo reto de este curso. Nosotros somos el equipo número 3.
+En este repositorio vamos a ir completando el reto que vamos a desplegar en AWS.
