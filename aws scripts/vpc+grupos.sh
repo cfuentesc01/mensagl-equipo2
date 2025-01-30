@@ -1,7 +1,7 @@
 #!/bin/bash
-
+ALUMNO=X
 # Top-level variables for names and tags
-VPC_NAME="vpc-mensagl-2025-MarioAja"
+VPC_NAME="vpc-mensagl-2025-${ALUMNO}"
 REGION="us-east-1"
 AVAILABILITY_ZONE1="${REGION}a"
 AVAILABILITY_ZONE2="${REGION}b"
