@@ -48,9 +48,9 @@ aws ec2 create-route --route-table-id $RTB_PRIVATE2 --destination-cidr-block "0.
 aws ec2 associate-route-table --route-table-id $RTB_PRIVATE2 --subnet-id $SUBNET_PRIVATE2
 
 # Final verifications
-aws ec2 describe-vpcs --vpc-ids $VPC_ID
-aws ec2 describe-nat-gateways --nat-gateway-ids $NATGW_ID
-aws ec2 describe-route-tables --route-table-ids $RTB_PRIVATE1 $RTB_PRIVATE2
+#aws ec2 describe-vpcs --vpc-ids $VPC_ID
+#aws ec2 describe-nat-gateways --nat-gateway-ids $NATGW_ID
+#aws ec2 describe-route-tables --route-table-ids $RTB_PRIVATE1 $RTB_PRIVATE2
 
 
 ###########################################################################################################
