@@ -38,7 +38,7 @@ cd 'aws scripts'
 chmod +x installation.sh
 ./installation.sh
 ```
-Tambíen existen otros scripts de AWS CLI por si se prefiere crear otro tipo de objetos en AWS de forma separada.
+Tambíen existen otros scripts de AWS CLI para crear objetos en AWS de forma separada.
 
 3. Responder a las cuestiones 📄
 
