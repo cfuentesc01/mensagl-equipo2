@@ -34,7 +34,7 @@ cd mensagl-equipo2
 2. Dentro de `aws scripts` ejecuta `installation.sh` 🧑‍💻
 
 ```bash
-cd aws scripts
+cd 'aws scripts'
 chmod +x installation.sh
 ./installation.sh
 ```
