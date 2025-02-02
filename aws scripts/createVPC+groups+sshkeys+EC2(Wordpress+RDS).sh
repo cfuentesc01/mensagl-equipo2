@@ -18,6 +18,8 @@ AMI_ID="ami-04b4f1a9cf54c11d0"          # Ubuntu 24.04 AMI ID
 
 # Variables for RDS
 RDS_INSTANCE_ID="wordpress-db"
+printf "%s" "RDS Wordpress Database: "
+read wDBName
 printf "%s" "RDS Wordpress Username: "
 read DB_USERNAME
 printf "%s" "RDS Wordpress Password: "
@@ -678,13 +680,13 @@ sudo chown -R ubuntu:ubuntu /var/www/html
 # MySQL credentials
 MYSQL_CMD="mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD}"
 $MYSQL_CMD <<EOF2
-CREATE DATABASE IF NOT EXISTS wordpress;
+CREATE DATABASE IF NOT EXISTS ${wDBName};
 CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'%' IDENTIFIED BY '${DB_PASSWORD}';
-GRANT ALL PRIVILEGES ON wordpress.* TO '${DB_USERNAME}'@'%';
+GRANT ALL PRIVILEGES ON ${wDBName}.* TO '${DB_USERNAME}'@'%';
 FLUSH PRIVILEGES;
 EOF2
 sudo -u ubuntu -k -- wp core download --path=/var/www/html
-sudo -u ubuntu -k -- wp core config --dbname=wordpress --dbuser=${DB_USERNAME} --dbpass=${DB_PASSWORD} --dbhost=${RDS_ENDPOINT} --dbprefix=wp_ --path=/var/www/html
+sudo -u ubuntu -k -- wp core config --dbname=${wDBName} --dbuser=${DB_USERNAME} --dbpass=${DB_PASSWORD} --dbhost=${RDS_ENDPOINT} --dbprefix=wp_ --path=/var/www/html
 sudo -u ubuntu -k -- wp core install --url=10.0.4.100  --title=Site_Title --admin_user=${DB_USERNAME} --admin_password=${DB_PASSWORD} --admin_email=majam02@educantabria.es --path=/var/www/html
 #sudo -u ubuntu -k -- wp option update home 'http://10.0.4.200' --path=/var/www/html
 #sudo -u ubuntu -k -- wp option update siteurl 'http://0.0.4.200' --path=/var/www/html
@@ -737,13 +739,13 @@ sudo chown -R ubuntu:ubuntu /var/www/html
 # MySQL credentials
 MYSQL_CMD="mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD}"
 $MYSQL_CMD <<EOF2
-CREATE DATABASE IF NOT EXISTS wordpress;
+CREATE DATABASE IF NOT EXISTS ${wDBName};
 CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'%' IDENTIFIED BY '${DB_PASSWORD}';
-GRANT ALL PRIVILEGES ON wordpress.* TO '${DB_USERNAME}'@'%';
+GRANT ALL PRIVILEGES ON ${wDBName}.* TO '${DB_USERNAME}'@'%';
 FLUSH PRIVILEGES;
 EOF2
 sudo -u ubuntu -k -- wp core download --path=/var/www/html
-sudo -u ubuntu -k -- wp core config --dbname=wordpress --dbuser=${DB_USERNAME} --dbpass=${DB_PASSWORD} --dbhost=${RDS_ENDPOINT} --dbprefix=wp_ --path=/var/www/html
+sudo -u ubuntu -k -- wp core config --dbname=${wDBName} --dbuser=${DB_USERNAME} --dbpass=${DB_PASSWORD} --dbhost=${RDS_ENDPOINT} --dbprefix=wp_ --path=/var/www/html
 sudo -u ubuntu -k -- wp core install --url=10.0.4.100  --title=Site_Title --admin_user=${DB_USERNAME} --admin_password=${DB_PASSWORD} --admin_email=majam02@educantabria.es --path=/var/www/html
 #sudo -u ubuntu -k -- wp option update home 'http://10.0.4.200' --path=/var/www/html
 #sudo -u ubuntu -k -- wp option update siteurl 'http://0.0.4.200' --path=/var/www/html
