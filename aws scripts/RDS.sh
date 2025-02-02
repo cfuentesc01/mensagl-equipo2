@@ -7,8 +7,10 @@
 # Variables
 
 RDS_INSTANCE_ID="wordpress-db"
-DB_USERNAME="cowboy_del_infierno"
-DB_PASSWORD="_Admin123"
+printf "%s" "RDS Wordpress Username: "
+read DB_USERNAME
+printf "%s" "RDS Wordpress Password: "
+read DB_PASSWORD
 
 REGION="us-east-1"
 AVAILABILITY_ZONE="${REGION}a"
