@@ -7,6 +7,10 @@ read ALUMNO
 KEY_NAME="ssh-mensagl-2025-${ALUMNO}"
 AMI_ID="ami-04b4f1a9cf54c11d0"          # Ubuntu 24.04 AMI ID
 
+# Variables for RDS
+RDS_INSTANCE_ID="wordpress-db"
+DB_USERNAME="cowboy_del_infierno"
+DB_PASSWORD="_Admin123"
 
 ###########################################################################################################
 ###########################                      V P C                          ###########################
@@ -378,11 +382,6 @@ echo "${INSTANCE_NAME} created";
 ########################################################################
 ######################### ADD RDS MYSQL INSTANCE #######################
 ########################################################################
-
-# Variables
-RDS_INSTANCE_ID="wordpress-db"
-DB_USERNAME="cowboy_del_infierno"
-DB_PASSWORD="_Admin123"
 
 # Create RDS Subnet Group (Requires at Least 2 AZs)
 aws rds create-db-subnet-group \
