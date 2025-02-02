@@ -1,12 +1,27 @@
 #!/bin/bash
 
-# Personal variables
-ALUMNO="MarioAja"
+# The name of the user for lab
+printf "%s" "Insert personal name: "
+read ALUMNO
 
-DUCKDNS_TOKEN="x"
-DUCKDNS_SUBDOMAIN="domain"
-DUCKDNS_SUBDOMAIN2="domain"
+# DuckDNS variables
+printf "%s" "DuckDNS token: "
+read DUCKDNS_TOKEN
+printf "%s" "DuckDNS domain1: "
+read DUCKDNS_SUBDOMAIN
+printf "%s" "DuckDNS domain2: "
+read DUCKDNS_SUBDOMAIN2
 
+# Key pair SSH
+KEY_NAME="ssh-mensagl-2025-${ALUMNO}"
+AMI_ID="ami-04b4f1a9cf54c11d0"          # Ubuntu 24.04 AMI ID
+
+# Variables for RDS
+RDS_INSTANCE_ID="wordpress-db"
+printf "%s" "RDS Wordpress Username: "
+read DB_USERNAME
+printf "%s" "RDS Wordpress Password: "
+read DB_PASSWORD
 
 
 ###########################################################################################################
@@ -18,8 +33,8 @@ VPC_NAME="vpc-mensagl-2025-${ALUMNO}"
 REGION="us-east-1"
 AVAILABILITY_ZONE1="${REGION}a"
 AVAILABILITY_ZONE2="${REGION}b"
-DESCRIPTION="Security group for EC2 instances"
-MY_IP="0.0.0.0/0" # Replace with your public IP range or '0.0.0.0/0' for open access (not recommended)
+DESCRIPTION="Mensagl Security group"
+MY_IP="0.0.0.0/0" # Replace with your public IP range or '0.0.0.0/0' for open access
 
 
 # Create VPC and capture its ID
@@ -29,12 +44,9 @@ aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-hostnames
 # Create public and private subnets, capture their IDs
 SUBNET_PUBLIC1=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block "10.0.1.0/24" --availability-zone $AVAILABILITY_ZONE1 --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=${VPC_NAME}-subnet-public1-${AVAILABILITY_ZONE1}}]" --query 'Subnet.SubnetId' --output text)
 aws ec2 modify-subnet-attribute --subnet-id $SUBNET_PUBLIC1 --map-public-ip-on-launch
-
 SUBNET_PUBLIC2=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block "10.0.2.0/24" --availability-zone $AVAILABILITY_ZONE2 --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=${VPC_NAME}-subnet-public2-${AVAILABILITY_ZONE2}}]" --query 'Subnet.SubnetId' --output text)
 aws ec2 modify-subnet-attribute --subnet-id $SUBNET_PUBLIC2 --map-public-ip-on-launch
-
 SUBNET_PRIVATE1=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block "10.0.3.0/24" --availability-zone $AVAILABILITY_ZONE1 --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=${VPC_NAME}-subnet-private1-${AVAILABILITY_ZONE1}}]" --query 'Subnet.SubnetId' --output text)
-
 SUBNET_PRIVATE2=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block "10.0.4.0/24" --availability-zone $AVAILABILITY_ZONE2 --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=${VPC_NAME}-subnet-private2-${AVAILABILITY_ZONE2}}]" --query 'Subnet.SubnetId' --output text)
 
 # Create Internet Gateway and attach to the VPC
@@ -58,7 +70,6 @@ aws ec2 wait nat-gateway-available --nat-gateway-ids $NATGW_ID
 RTB_PRIVATE1=$(aws ec2 create-route-table --vpc-id $VPC_ID --tag-specifications "ResourceType=route-table,Tags=[{Key=Name,Value=${VPC_NAME}-rtb-private1-${AVAILABILITY_ZONE1}}]" --query 'RouteTable.RouteTableId' --output text)
 aws ec2 create-route --route-table-id $RTB_PRIVATE1 --destination-cidr-block "0.0.0.0/0" --nat-gateway-id $NATGW_ID
 aws ec2 associate-route-table --route-table-id $RTB_PRIVATE1 --subnet-id $SUBNET_PRIVATE1
-
 RTB_PRIVATE2=$(aws ec2 create-route-table --vpc-id $VPC_ID --tag-specifications "ResourceType=route-table,Tags=[{Key=Name,Value=${VPC_NAME}-rtb-private2-${AVAILABILITY_ZONE2}}]" --query 'RouteTable.RouteTableId' --output text)
 aws ec2 create-route --route-table-id $RTB_PRIVATE2 --destination-cidr-block "0.0.0.0/0" --nat-gateway-id $NATGW_ID
 aws ec2 associate-route-table --route-table-id $RTB_PRIVATE2 --subnet-id $SUBNET_PRIVATE2
@@ -113,17 +124,11 @@ SG_ID_XMPP=$(aws ec2 create-security-group \
   --tag-specifications "ResourceType=security-group,Tags=[{Key=Name,Value="Servidor-Mensajeria"}]" \
   --query 'GroupId' \
   --output text)
-# Add inbound rule to allow SSH
+# Add inbound rule to allow 10000
 aws ec2 authorize-security-group-ingress \
   --group-id $SG_ID_XMPP \
   --protocol tcp \
-  --port 22 \
-  --cidr $MY_IP
-# Add inbound rule to allow 5222
-aws ec2 authorize-security-group-ingress \
-  --group-id $SG_ID_XMPP \
-  --protocol tcp \
-  --port 5222 \
+  --port 1000 \
   --cidr $MY_IP
 # Add inbound rule to allow 5269
 aws ec2 authorize-security-group-ingress \
@@ -131,12 +136,71 @@ aws ec2 authorize-security-group-ingress \
   --protocol tcp \
   --port 5269 \
   --cidr $MY_IP
+# Add inbound rule to allow 4443
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_XMPP \
+  --protocol tcp \
+  --port 4443 \
+  --cidr $MY_IP
+# Add inbound rule to allow 5281
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_XMPP \
+  --protocol tcp \
+  --port 5281 \
+  --cidr $MY_IP
+# Add inbound rule to allow 5280
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_XMPP \
+  --protocol tcp \
+  --port 5280 \
+  --cidr $MY_IP
+# Add inbound rule to allow 5347
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_XMPP \
+  --protocol tcp \
+  --port 5347 \
+  --cidr $MY_IP
+# Add inbound rule to allow 5222
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_XMPP \
+  --protocol tcp \
+  --port 5222 \
+  --cidr $MY_IP
+# Add inbound rule to allow HTTP
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_XMPP \
+  --protocol tcp \
+  --port 80 \
+  --cidr $MY_IP
+# Add inbound rule to allow HTTPS
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_XMPP \
+  --protocol tcp \
+  --port 443 \
+  --cidr $MY_IP
+# Add inbound rule to allow SSH
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_XMPP \
+  --protocol tcp \
+  --port 1000 \
+  --cidr $MY_IP
+# Add inbound rule to allow 12345
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_XMPP \
+  --protocol tcp \
+  --port 12345 \
+  --cidr $MY_IP
 # Add inbound rule to allow MYSQL
 aws ec2 authorize-security-group-ingress \
   --group-id $SG_ID_XMPP \
   --protocol tcp \
   --port 3306 \
   --cidr $MY_IP
+
+
+
+
+
 
 
 
@@ -160,6 +224,10 @@ aws ec2 authorize-security-group-ingress \
   --protocol tcp \
   --port 3306 \
   --cidr $MY_IP
+
+
+
+
 
 
 
@@ -197,9 +265,6 @@ echo "Sec Groups Created !";
 #########################                      KEYS SSH                          ##########################
 ###########################################################################################################
 
-# Key pair SSH
-KEY_NAME="ssh-mensagl-2025-${ALUMNO}"
-
 aws ec2 create-key-pair \
   --key-name "${KEY_NAME}" \
   --query "KeyMaterial" \
@@ -210,9 +275,6 @@ echo "SSH KEYS !";
 ###########################################################################################################
 ###########################                      E C 2                          ###########################
 ###########################################################################################################
-
-AMI_ID="ami-04b4f1a9cf54c11d0"          # Ubuntu 24.04 AMI ID
-
 
 ####### PROXY
 
@@ -364,7 +426,6 @@ echo "${INSTANCE_NAME} created";
 
 ####### MySQL
 
-
 # MYSQL-1
 # ====== Variables ======
 INSTANCE_NAME="MYSQ-1"                 # Tag: Name of the EC2 instance
@@ -407,7 +468,36 @@ echo "${INSTANCE_NAME} created";
 
 
 
+####### MySQL
 
+# MYSQL-2
+# ====== Variables ======
+INSTANCE_NAME="MYSQ-1"                 # Tag: Name of the EC2 instance
+SUBNET_ID="${SUBNET_PRIVATE1}"           # Subnet ID
+SECURITY_GROUP_ID="${SG_ID_MYSQL}"  # Security Group ID
+PRIVATE_IP="10.0.3.20"                # Private IP for the instance
+
+INSTANCE_TYPE="t2.micro"                # EC2 Instance Type
+KEY_NAME="${KEY_NAME}"                  # Name of the SSH Key Pair
+VOLUME_SIZE=8                           # Size of the root EBS volume (in GB)
+USER_DATA_SCRIPT=$(cat <<'EOF'
+#!/bin/bash
+echo "MySQL DB WORDPRESS !!"
+EOF
+)
+
+# ====== Create EC2 Instance ======
+INSTANCE_ID=$(aws ec2 run-instances \
+    --image-id "$AMI_ID" \
+    --instance-type "$INSTANCE_TYPE" \
+    --key-name "$KEY_NAME" \
+    --block-device-mappings "DeviceName=/dev/sda1,Ebs={VolumeSize=$VOLUME_SIZE,VolumeType=gp3,DeleteOnTermination=true}" \
+    --network-interfaces "SubnetId=$SUBNET_ID,AssociatePublicIpAddress=true,DeviceIndex=0,PrivateIpAddresses=[{Primary=true,PrivateIpAddress=$PRIVATE_IP}],Groups=[$SECURITY_GROUP_ID]" \
+    --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$INSTANCE_NAME}]" \
+    --user-data "$USER_DATA_SCRIPT" \
+    --query "Instances[0].InstanceId" \
+    --output text)
+echo "${INSTANCE_NAME} created";
 
 
 
@@ -430,10 +520,6 @@ echo "${INSTANCE_NAME} created";
 ###################### ADD RDS MYSQL INSTANCE BELOW ####################
 ########################################################################
 
-# Variables
-RDS_INSTANCE_ID="wordpress-db"
-DB_USERNAME="cowbow_del_infierno"
-DB_PASSWORD="_Admin123"
 
 # Create RDS Subnet Group (Requires at Least 2 AZs)
 aws rds create-db-subnet-group \
