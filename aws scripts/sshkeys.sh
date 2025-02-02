@@ -3,8 +3,11 @@
 #########################                      KEYS SSH                          ##########################
 ###########################################################################################################
 
+# The name of the user for lab
+printf "%s" "Insert personal name: "
+read ALUMNO
+
 # Key pair SSH
-ALUMNO="X"
 KEY_NAME="ssh-mensagl-2025-${ALUMNO}"
 
 aws ec2 create-key-pair \
