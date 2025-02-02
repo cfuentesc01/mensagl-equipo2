@@ -7,8 +7,8 @@ Creado en AWS (Amazon Web Service) pensado para uso cotidiano y con la posibilid
 
 ## Introducción 📝
 El sistema se compone de 4 redes en su totalidad, siendo 2 de ellas redes publicas para usar un proxy como balanceo de carga en las redes privadas.
-En cada red privada se crean 2 instancias iguales, utilizando el proxy publico como balanceo de carga de solicitudes de los mismos y en cada red, utilizando diferentes tecnologias para la preservacion de datos.
-Hay tanto un sistema de mensajería como un sistema de resolucióon de incidencias.
+En cada red privada se crean 2 instancias iguales, utilizando el proxy publico como balanceo de carga de solicitudes de los mismos y en cada red, utilizando diferentes tecnologias para la preservación de datos.
+Hay tanto un sistema de mensajería como un sistema de resolución de incidencias.
 
 El servicio de mensajería se compone de:
 - Proxy publico con dominio dinámico (DDNS) `DuckDNS`. 🌐
