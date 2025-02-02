@@ -9,8 +9,10 @@ AMI_ID="ami-04b4f1a9cf54c11d0"          # Ubuntu 24.04 AMI ID
 
 # Variables for RDS
 RDS_INSTANCE_ID="wordpress-db"
-DB_USERNAME="cowboy_del_infierno"
-DB_PASSWORD="_Admin123"
+printf "%s" "RDS Wordpress Username: "
+read DB_USERNAME
+printf "%s" "RDS Wordpress Password: "
+read DB_PASSWORD
 
 ###########################################################################################################
 ###########################                      V P C                          ###########################
