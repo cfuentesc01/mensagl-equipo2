@@ -679,15 +679,15 @@ sudo chown -R ubuntu:ubuntu /var/www/html
 MYSQL_CMD="mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD}"
 $MYSQL_CMD <<EOF2
 CREATE DATABASE IF NOT EXISTS wordpress;
-CREATE USER IF NOT EXISTS 'cowboy_del_infierno'@'%' IDENTIFIED BY '_Admin123';
-GRANT ALL PRIVILEGES ON wordpress.* TO 'cowboy_del_infierno'@'%';
+CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'%' IDENTIFIED BY '${DB_PASSWORD}';
+GRANT ALL PRIVILEGES ON wordpress.* TO '${DB_USERNAME}'@'%';
 FLUSH PRIVILEGES;
 EOF2
 sudo -u ubuntu -k -- wp core download --path=/var/www/html
-sudo -u ubuntu -k -- wp core config --dbname=wordpress --dbuser=cowboy_del_infierno --dbpass=_Admin123 --dbhost=${RDS_ENDPOINT} --dbprefix=wp_ --path=/var/www/html
-sudo -u ubuntu -k -- wp core install --url=10.0.4.100  --title=Site_Title --admin_user=cowboy_del_infierno --admin_password=Admin123 --admin_email=majam02@educantabria.es --path=/var/www/html
-#sudo -u ubuntu -k -- wp option update home 'http://10.0.4.100' --path=/var/www/html
-#sudo -u ubuntu -k -- wp option update siteurl 'http://0.0.4.100' --path=/var/www/html
+sudo -u ubuntu -k -- wp core config --dbname=wordpress --dbuser=${DB_USERNAME} --dbpass=${DB_PASSWORD} --dbhost=${RDS_ENDPOINT} --dbprefix=wp_ --path=/var/www/html
+sudo -u ubuntu -k -- wp core install --url=10.0.4.100  --title=Site_Title --admin_user=${DB_USERNAME} --admin_password=${DB_PASSWORD} --admin_email=majam02@educantabria.es --path=/var/www/html
+#sudo -u ubuntu -k -- wp option update home 'http://10.0.4.200' --path=/var/www/html
+#sudo -u ubuntu -k -- wp option update siteurl 'http://0.0.4.200' --path=/var/www/html
 sudo -u ubuntu -k -- wp plugin install supportcandy --activate --path=/var/www/html
 echo "Wordpress mounted !!"
 EOF
@@ -738,13 +738,13 @@ sudo chown -R ubuntu:ubuntu /var/www/html
 MYSQL_CMD="mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD}"
 $MYSQL_CMD <<EOF2
 CREATE DATABASE IF NOT EXISTS wordpress;
-CREATE USER IF NOT EXISTS 'cowboy_del_infierno'@'%' IDENTIFIED BY '_Admin123';
-GRANT ALL PRIVILEGES ON wordpress.* TO 'cowboy_del_infierno'@'%';
+CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'%' IDENTIFIED BY '${DB_PASSWORD}';
+GRANT ALL PRIVILEGES ON wordpress.* TO '${DB_USERNAME}'@'%';
 FLUSH PRIVILEGES;
 EOF2
 sudo -u ubuntu -k -- wp core download --path=/var/www/html
-sudo -u ubuntu -k -- wp core config --dbname=wordpress --dbuser=cowboy_del_infierno --dbpass=_Admin123 --dbhost=${RDS_ENDPOINT} --dbprefix=wp_ --path=/var/www/html
-sudo -u ubuntu -k -- wp core install --url=10.0.4.100  --title=Site_Title --admin_user=cowboy_del_infierno --admin_password=Admin123 --admin_email=majam02@educantabria.es --path=/var/www/html
+sudo -u ubuntu -k -- wp core config --dbname=wordpress --dbuser=${DB_USERNAME} --dbpass=${DB_PASSWORD} --dbhost=${RDS_ENDPOINT} --dbprefix=wp_ --path=/var/www/html
+sudo -u ubuntu -k -- wp core install --url=10.0.4.100  --title=Site_Title --admin_user=${DB_USERNAME} --admin_password=${DB_PASSWORD} --admin_email=majam02@educantabria.es --path=/var/www/html
 #sudo -u ubuntu -k -- wp option update home 'http://10.0.4.200' --path=/var/www/html
 #sudo -u ubuntu -k -- wp option update siteurl 'http://0.0.4.200' --path=/var/www/html
 sudo -u ubuntu -k -- wp plugin install supportcandy --activate --path=/var/www/html
