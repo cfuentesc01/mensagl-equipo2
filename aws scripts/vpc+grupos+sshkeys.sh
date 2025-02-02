@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Personal variables
-ALUMNO="X"
+# The name of the user for lab
+printf "%s" "Insert personal name: "
+read ALUMNO
 
 ###########################################################################################################
 ###########################                      V P C                          ###########################
