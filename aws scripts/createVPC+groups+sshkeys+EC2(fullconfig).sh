@@ -6,7 +6,7 @@ printf "%s" "Insert personal name: "
 read ALUMNO
 # The name of the user for lab
 printf "%s" "Insert email: "
-read email
+read EMAIL
 
 # DuckDNS variables
 printf "%s" "DuckDNS token: "
@@ -15,6 +15,7 @@ printf "%s" "DuckDNS domain1: "
 read DUCKDNS_SUBDOMAIN
 printf "%s" "DuckDNS domain2: "
 read DUCKDNS_SUBDOMAIN2
+
 
 # Key pair SSH
 KEY_NAME="ssh-mensagl-2025-${ALUMNO}"
@@ -33,8 +34,9 @@ read DB_PASSWORD
 ###########################################################################################################
 ###########################                      V P C                          ###########################
 ###########################################################################################################
+export EDITOR=true
 
-# VPC_Variables
+# VPC Variables
 VPC_NAME="vpc-mensagl-2025-${ALUMNO}"
 REGION="us-east-1"
 AVAILABILITY_ZONE1="${REGION}a"
@@ -42,17 +44,23 @@ AVAILABILITY_ZONE2="${REGION}b"
 DESCRIPTION="Mensagl Security group"
 MY_IP="0.0.0.0/0" # Replace with your public IP range or '0.0.0.0/0' for open access
 
-
 # Create VPC and capture its ID
 VPC_ID=$(aws ec2 create-vpc --cidr-block "10.0.0.0/16" --instance-tenancy "default" --tag-specifications "ResourceType=vpc,Tags=[{Key=Name,Value=${VPC_NAME}-vpc}]" --query 'Vpc.VpcId' --output text)
 aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-hostnames
 
-# Create public and private subnets, capture their IDs
+# Create subnets (Public and Private)
+# Public Subnet 1
 SUBNET_PUBLIC1=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block "10.0.1.0/24" --availability-zone $AVAILABILITY_ZONE1 --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=${VPC_NAME}-subnet-public1-${AVAILABILITY_ZONE1}}]" --query 'Subnet.SubnetId' --output text)
 aws ec2 modify-subnet-attribute --subnet-id $SUBNET_PUBLIC1 --map-public-ip-on-launch
+
+# Public Subnet 2
 SUBNET_PUBLIC2=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block "10.0.2.0/24" --availability-zone $AVAILABILITY_ZONE2 --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=${VPC_NAME}-subnet-public2-${AVAILABILITY_ZONE2}}]" --query 'Subnet.SubnetId' --output text)
 aws ec2 modify-subnet-attribute --subnet-id $SUBNET_PUBLIC2 --map-public-ip-on-launch
+
+# Private Subnet 1
 SUBNET_PRIVATE1=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block "10.0.3.0/24" --availability-zone $AVAILABILITY_ZONE1 --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=${VPC_NAME}-subnet-private1-${AVAILABILITY_ZONE1}}]" --query 'Subnet.SubnetId' --output text)
+
+# Private Subnet 2
 SUBNET_PRIVATE2=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block "10.0.4.0/24" --availability-zone $AVAILABILITY_ZONE2 --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=${VPC_NAME}-subnet-private2-${AVAILABILITY_ZONE2}}]" --query 'Subnet.SubnetId' --output text)
 
 # Create Internet Gateway and attach to the VPC
@@ -65,7 +73,7 @@ aws ec2 create-route --route-table-id $RTB_PUBLIC --destination-cidr-block "0.0.
 aws ec2 associate-route-table --route-table-id $RTB_PUBLIC --subnet-id $SUBNET_PUBLIC1
 aws ec2 associate-route-table --route-table-id $RTB_PUBLIC --subnet-id $SUBNET_PUBLIC2
 
-# Create Elastic IP and NAT Gateway
+# Create Elastic IP and NAT Gateway (Only ONE NAT in AZ1)
 EIP_ALLOC_ID=$(aws ec2 allocate-address --domain vpc --tag-specifications "ResourceType=elastic-ip,Tags=[{Key=Name,Value=${VPC_NAME}-eip-${AVAILABILITY_ZONE1}}]" --query 'AllocationId' --output text)
 NATGW_ID=$(aws ec2 create-nat-gateway --subnet-id $SUBNET_PUBLIC1 --allocation-id $EIP_ALLOC_ID --tag-specifications "ResourceType=natgateway,Tags=[{Key=Name,Value=${VPC_NAME}-nat-public1-${AVAILABILITY_ZONE1}}]" --query 'NatGateway.NatGatewayId' --output text)
 
@@ -76,16 +84,20 @@ aws ec2 wait nat-gateway-available --nat-gateway-ids $NATGW_ID
 RTB_PRIVATE1=$(aws ec2 create-route-table --vpc-id $VPC_ID --tag-specifications "ResourceType=route-table,Tags=[{Key=Name,Value=${VPC_NAME}-rtb-private1-${AVAILABILITY_ZONE1}}]" --query 'RouteTable.RouteTableId' --output text)
 aws ec2 create-route --route-table-id $RTB_PRIVATE1 --destination-cidr-block "0.0.0.0/0" --nat-gateway-id $NATGW_ID
 aws ec2 associate-route-table --route-table-id $RTB_PRIVATE1 --subnet-id $SUBNET_PRIVATE1
+
 RTB_PRIVATE2=$(aws ec2 create-route-table --vpc-id $VPC_ID --tag-specifications "ResourceType=route-table,Tags=[{Key=Name,Value=${VPC_NAME}-rtb-private2-${AVAILABILITY_ZONE2}}]" --query 'RouteTable.RouteTableId' --output text)
 aws ec2 create-route --route-table-id $RTB_PRIVATE2 --destination-cidr-block "0.0.0.0/0" --nat-gateway-id $NATGW_ID
 aws ec2 associate-route-table --route-table-id $RTB_PRIVATE2 --subnet-id $SUBNET_PRIVATE2
 
-# Final verifications
+
+# Final verification (optional)
 #aws ec2 describe-vpcs --vpc-ids $VPC_ID
 #aws ec2 describe-nat-gateways --nat-gateway-ids $NATGW_ID
 #aws ec2 describe-route-tables --route-table-ids $RTB_PRIVATE1 $RTB_PRIVATE2
 
-echo "VPC Created !";
+echo "VPC Created !"
+
+
 
 
 ###########################################################################################################
@@ -202,9 +214,10 @@ aws ec2 authorize-security-group-ingress \
   --protocol tcp \
   --port 3306 \
   --cidr $MY_IP
-
-
-
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_XMPP \
+  --protocol -1 \
+  --source-group $SG_ID_PROXY
 
 
 
@@ -288,64 +301,92 @@ echo "SSH KEYS !";
 # ====== Variables ======
 INSTANCE_NAME="PROXY-1"                 # Tag: Name of the EC2 instance
 SUBNET_ID="${SUBNET_PUBLIC1}"           # Subnet ID
-SECURITY_GROUP_ID="${SG_ID_PROXY}"  # Security Group ID
-PRIVATE_IP="10.0.1.10"                # Private IP for the instance
+SECURITY_GROUP_ID="${SG_ID_PROXY}"      # Security Group ID
+PRIVATE_IP="10.0.1.10"                 # Private IP for the instance
 
 INSTANCE_TYPE="t2.micro"                # EC2 Instance Type
 KEY_NAME="${KEY_NAME}"                  # Name of the SSH Key Pair
 VOLUME_SIZE=8                           # Size of the root EBS volume (in GB)
+
 USER_DATA_SCRIPT=$(cat <<'EOF'
 #!/bin/bash
+# Update and install necessary packages
 apt-get update -y
-PUBLIC_IP=$(curl https://ipinfo.io/ip)
-curl -s https://www.duckdns.org/update?domains=${DUCKDNS_SUBDOMAIN}&token=${DUCKDNS_TOKEN}&ip=${PUBLIC_IP}&verbose=true&clear=true
-sleep 30
-sudo apt install -y certbot
+apt-get install -y curl certbot
+
+# Set up DuckDNS - Update the DuckDNS IP every 5 minutes
+echo "Setting up DuckDNS update script..."
+mkdir -p /opt/duckdns
+cat <<DUCKDNS_SCRIPT > /opt/duckdns/duckdns.sh
+#!/bin/bash
+echo "Updating DuckDNS: $DUCKDNS_SUBDOMAIN"
+curl -k "https://www.duckdns.org/update?domains=$DUCKDNS_SUBDOMAIN&token=$DUCKDNS_TOKEN&ip=" -o /opt/duckdns/duck.log
+DUCKDNS_SCRIPT
+chmod +x /opt/duckdns/duckdns.sh
+(crontab -l 2>/dev/null; echo "*/5 * * * * /opt/duckdns/duckdns.sh >/dev/null 2>&1") | crontab -
+
+# Update DuckDNS immediately to set the IP
+echo "Updating DuckDNS IP..."
+/opt/duckdns/duckdns.sh
+
 # Obtain SSL certificate in standalone mode (non-interactive)
-sudo certbot certonly --standalone \
+echo "Obtaining SSL certificate using certbot..."
+certbot certonly --standalone \
   --non-interactive \
   --agree-tos \
-  --email ${email} \
-  -d "${DUCKDNS_SUBDOMAIN}.duckdns.org"
-sudo chmod 755 /etc/letsencrypt/archive/
-sudo chmod 755 /etc/letsencrypt/archive/${DUCKDNS_SUBDOMAIN}.duckdns.org/
-sudo chmod 755 /etc/letsencrypt/live/
-sudo chmod 755 /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org/
-apt-get install nginx -y
+  --email $EMAIL \
+  -d "$DUCKDNS_SUBDOMAIN.duckdns.org"
+
+apt install nginx -y
+# Install and configure NGINX
+echo "Installing and configuring NGINX..."
 cat <<CONFIG > /etc/nginx/sites-available/proxy_site
 upstream backend_meets {
-    server 10.0.4.100:443;
-    server 10.0.4.200:443;
+    server 10.0.3.100:443;
+    server 10.0.3.200:443;
 }
 
 upstream backend_xmpp {
-    server 10.0.4.100:12345;
-    server 10.0.4.200:12345;
+    server 10.0.3.100:12345;
+    server 10.0.3.200:12345;
 }
 
 server {
     listen 80;
-    server_name mensagl-marioaja.duckdns.org;
+    server_name $DUCKDNS_SUBDOMAIN.duckdns.org;
 
     location /.well-known/acme-challenge/ {
         root /var/www/html;
     }
 
     location / {
+        return 403;
+    }
+
+    location /llamadas {
+        return 301 https://\$host\$request_uri;
+    }
+
+    location /xmpp {
         return 301 https://\$host\$request_uri;
     }
 }
 
 server {
     listen 443 ssl;
-    server_name mensagl-marioaja.duckdns.org;
+    server_name $DUCKDNS_SUBDOMAIN.duckdns.org;
 
-    ssl_certificate /etc/letsencrypt/live/mensagl-marioaja.duckdns.org/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/mensagl-marioaja.duckdns.org/privkey.pem;
-    include /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    ssl_certificate /etc/letsencrypt/live/$DUCKDNS_SUBDOMAIN.duckdns.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$DUCKDNS_SUBDOMAIN.duckdns.org/privkey.pem;
 
+    # Redirect root (/) to /llamadas
     location / {
+        return 301 https://\$host/llamadas;
+    }
+
+    # Strip /llamadas before sending to Jitsi
+    location /llamadas/ {
+        rewrite ^/llamadas(/.*)\$ \$1 break;
         proxy_pass https://backend_meets;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
@@ -353,12 +394,30 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
-    location /meets {
+    # Allow Jitsi static files (CSS, JS, images)
+    location /libs/ {
         proxy_pass https://backend_meets;
         proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    location /css/ {
+        proxy_pass https://backend_meets;
+        proxy_set_header Host \$host;
+    }
+
+    location /static/ {
+        proxy_pass https://backend_meets;
+        proxy_set_header Host \$host;
+    }
+
+    location /images/ {
+        proxy_pass https://backend_meets;
+        proxy_set_header Host \$host;
+    }
+
+    location /sounds/ {
+        proxy_pass https://backend_meets;
+        proxy_set_header Host \$host;
     }
 
     location /xmpp {
@@ -374,20 +433,10 @@ ln -s /etc/nginx/sites-available/proxy_site /etc/nginx/sites-enabled/
 rm /etc/nginx/sites-enabled/default
 systemctl restart nginx
 systemctl enable nginx
-echo "PROXY installed !"
+echo "NGINX installed and configured!"
 
-mkdir -p /opt/duckdns
-cd /opt/duckdns
-cat <<'DUCKDNS_SCRIPT' > duckdns.sh
-#!/bin/bash
-echo url="https://www.duckdns.org/update?domains=$DUCKDNS_SUBDOMAIN&token=$DUCKDNS_TOKEN&ip=" | curl -k -o /opt/duckdns/duck.log -K -
-DUCKDNS_SCRIPT
-chmod +x duckdns.sh
-(crontab -l 2>/dev/null; echo "*/5 * * * * /opt/duckdns/duckdns.sh >/dev/null 2>&1") | crontab -
-echo "DDNS installed !"
 EOF
 )
-
 
 # ====== Create EC2 Instance ======
 INSTANCE_ID=$(aws ec2 run-instances \
@@ -397,10 +446,11 @@ INSTANCE_ID=$(aws ec2 run-instances \
     --block-device-mappings "DeviceName=/dev/sda1,Ebs={VolumeSize=$VOLUME_SIZE,VolumeType=gp3,DeleteOnTermination=true}" \
     --network-interfaces "SubnetId=$SUBNET_ID,AssociatePublicIpAddress=true,DeviceIndex=0,PrivateIpAddresses=[{Primary=true,PrivateIpAddress=$PRIVATE_IP}],Groups=[$SECURITY_GROUP_ID]" \
     --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$INSTANCE_NAME}]" \
-    --user-data "$(echo "$USER_DATA_SCRIPT" | sed "s/\$DUCKDNS_TOKEN/$DUCKDNS_TOKEN/g" | sed "s/\$DUCKDNS_SUBDOMAIN/$DUCKDNS_SUBDOMAIN/g")" \
+    --user-data "$(echo "$USER_DATA_SCRIPT" | sed "s/\$DUCKDNS_TOKEN/$DUCKDNS_TOKEN/g" | sed "s/\$EMAIL/$EMAIL/g" | sed "s/\$DUCKDNS_SUBDOMAIN/$DUCKDNS_SUBDOMAIN/g")" \
     --query "Instances[0].InstanceId" \
     --output text)
-echo "${INSTANCE_NAME} created";
+
+echo "${INSTANCE_NAME} created"
 
 
 
@@ -421,6 +471,22 @@ VOLUME_SIZE=8                           # Size of the root EBS volume (in GB)
 USER_DATA_SCRIPT=$(cat <<'EOF'
 #!/bin/bash
 apt-get update -y
+PUBLIC_IP=$(curl https://ipinfo.io/ip)
+curl -s https://www.duckdns.org/update?domains=$DUCKDNS_SUBDOMAIN2&token=$DUCKDNS_TOKEN&ip=$PUBLIC_IP&verbose=true&clear=true
+sleep 30
+sudo apt install -y certbot
+# Obtain SSL certificate in standalone mode (non-interactive)
+sudo certbot certonly --standalone \
+  --non-interactive \
+  --agree-tos \
+  --email $EMAIL \
+  -d "$DUCKDNS_SUBDOMAIN2.duckdns.org"
+sudo chmod 755 /etc/letsencrypt/archive/
+sudo chmod 755 /etc/letsencrypt/archive/${DUCKDNS_SUBDOMAIN2}.duckdns.org/
+sudo chmod 755 /etc/letsencrypt/live/
+sudo chmod 755 /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN2}.duckdns.org/
+
+
 apt-get install nginx -y
 cat <<CONFIG > /etc/nginx/sites-available/proxy_site
 upstream backend_servers {
@@ -468,7 +534,7 @@ INSTANCE_ID=$(aws ec2 run-instances \
     --block-device-mappings "DeviceName=/dev/sda1,Ebs={VolumeSize=$VOLUME_SIZE,VolumeType=gp3,DeleteOnTermination=true}" \
     --network-interfaces "SubnetId=$SUBNET_ID,AssociatePublicIpAddress=true,DeviceIndex=0,PrivateIpAddresses=[{Primary=true,PrivateIpAddress=$PRIVATE_IP}],Groups=[$SECURITY_GROUP_ID]" \
     --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$INSTANCE_NAME}]" \
-    --user-data "$(echo "$USER_DATA_SCRIPT" | sed "s/\$DUCKDNS_TOKEN/$DUCKDNS_TOKEN/g" | sed "s/\$DUCKDNS_SUBDOMAIN2/$DUCKDNS_SUBDOMAIN2/g")" \
+    --user-data "$(echo "$USER_DATA_SCRIPT" | sed "s/\$DUCKDNS_TOKEN/$DUCKDNS_TOKEN/g" | sed "s/\$EMAIL/$EMAIL/g" )"
     --query "Instances[0].InstanceId" \
     --output text)
 echo "${INSTANCE_NAME} created";
@@ -604,7 +670,7 @@ aws ec2 authorize-security-group-ingress \
 # Create RDS Instance (Single-AZ in Private Subnet 2)
 aws rds create-db-instance \
     --db-instance-identifier "$RDS_INSTANCE_ID" \
-    --db-instance-class db.t3.medium \
+    --db-instance-class db.t3.micro \
     --engine mysql \
     --allocated-storage 20 \
     --storage-type gp2 \
@@ -744,9 +810,9 @@ FLUSH PRIVILEGES;
 EOF2
 sudo -u ubuntu -k -- wp core download --path=/var/www/html
 sudo -u ubuntu -k -- wp core config --dbname=${wDBName} --dbuser=${DB_USERNAME} --dbpass=${DB_PASSWORD} --dbhost=${RDS_ENDPOINT} --dbprefix=wp_ --path=/var/www/html
-sudo -u ubuntu -k -- wp core install --url=10.0.4.100  --title=Site_Title --admin_user=${DB_USERNAME} --admin_password=${DB_PASSWORD} --admin_email=${email} --path=/var/www/html
-#sudo -u ubuntu -k -- wp option update home 'http://10.0.4.200' --path=/var/www/html
-#sudo -u ubuntu -k -- wp option update siteurl 'http://0.0.4.200' --path=/var/www/html
+sudo -u ubuntu -k -- wp core install --url=10.0.4.100  --title=Site_Title --admin_user=${DB_USERNAME} --admin_password=${DB_PASSWORD} --admin_email=${EMAIL} --path=/var/www/html
+#sudo -u ubuntu -k -- wp option update home 'http://10.0.4.100' --path=/var/www/html
+#sudo -u ubuntu -k -- wp option update siteurl 'http://0.0.4.100' --path=/var/www/html
 sudo -u ubuntu -k -- wp plugin install supportcandy --activate --path=/var/www/html
 echo "Wordpress mounted !!"
 EOF
@@ -774,7 +840,7 @@ echo "${INSTANCE_NAME} created";
 
 # WORDPRESS-2
 # ====== Variables ======
-INSTANCE_NAME="WORDPRESS-1"                 # Tag: Name of the EC2 instance
+INSTANCE_NAME="WORDPRESS-2"                 # Tag: Name of the EC2 instance
 SUBNET_ID="${SUBNET_PRIVATE2}"           # Subnet ID
 SECURITY_GROUP_ID="${SG_ID_WORDPRESS}"  # Security Group ID
 PRIVATE_IP="10.0.4.200"                # Private IP for the instance
@@ -803,7 +869,7 @@ FLUSH PRIVILEGES;
 EOF2
 sudo -u ubuntu -k -- wp core download --path=/var/www/html
 sudo -u ubuntu -k -- wp core config --dbname=${wDBName} --dbuser=${DB_USERNAME} --dbpass=${DB_PASSWORD} --dbhost=${RDS_ENDPOINT} --dbprefix=wp_ --path=/var/www/html
-sudo -u ubuntu -k -- wp core install --url=10.0.4.100  --title=Site_Title --admin_user=${DB_USERNAME} --admin_password=${DB_PASSWORD} --admin_email=${email} --path=/var/www/html
+sudo -u ubuntu -k -- wp core install --url=10.0.4.200  --title=Site_Title --admin_user=${DB_USERNAME} --admin_password=${DB_PASSWORD} --admin_email=${EMAIL} --path=/var/www/html
 #sudo -u ubuntu -k -- wp option update home 'http://10.0.4.200' --path=/var/www/html
 #sudo -u ubuntu -k -- wp option update siteurl 'http://0.0.4.200' --path=/var/www/html
 sudo -u ubuntu -k -- wp plugin install supportcandy --activate --path=/var/www/html
