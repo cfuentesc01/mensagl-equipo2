@@ -1,3 +1,5 @@
+LA VPC TIENE QUE SER LA 10.2XX.0.0/16
+
 # MensAGL 🔥 LosCowboysDelInfierno 🔥
 
 Un servidor de comunicaciones unificadas que incluye mensajería instántanea, llamadas y videoconferencia.
