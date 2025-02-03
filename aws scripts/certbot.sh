@@ -14,7 +14,7 @@ sudo apt install -y certbot
 sudo certbot certonly --standalone \
   --non-interactive \
   --agree-tos \
-  --email ${email} \
+  --email "${email}" \
   -d "${domain}"
 
 
