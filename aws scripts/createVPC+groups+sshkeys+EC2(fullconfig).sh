@@ -487,7 +487,7 @@ echo "${INSTANCE_NAME} created";
 
 # MYSQL-1
 # ====== Variables ======
-INSTANCE_NAME="MYSQ-1"                 # Tag: Name of the EC2 instance
+INSTANCE_NAME="MYSQL-1"                 # Tag: Name of the EC2 instance
 SUBNET_ID="${SUBNET_PRIVATE1}"           # Subnet ID
 SECURITY_GROUP_ID="${SG_ID_MYSQL}"  # Security Group ID
 PRIVATE_IP="10.0.3.10"                # Private IP for the instance
@@ -531,7 +531,7 @@ echo "${INSTANCE_NAME} created";
 
 # MYSQL-2
 # ====== Variables ======
-INSTANCE_NAME="MYSQ-1"                 # Tag: Name of the EC2 instance
+INSTANCE_NAME="MYSQL-2"                 # Tag: Name of the EC2 instance
 SUBNET_ID="${SUBNET_PRIVATE1}"           # Subnet ID
 SECURITY_GROUP_ID="${SG_ID_MYSQL}"  # Security Group ID
 PRIVATE_IP="10.0.3.20"                # Private IP for the instance
