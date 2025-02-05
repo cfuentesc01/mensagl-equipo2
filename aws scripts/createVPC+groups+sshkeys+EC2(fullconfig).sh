@@ -11,15 +11,16 @@ read EMAIL
 # DuckDNS variables
 printf "%s" "DuckDNS token: "
 read DUCKDNS_TOKEN
-printf "%s" "DuckDNS domain1: "
+printf "%s" "DuckDNS domain1 (without .duckdns.org): "
 read DUCKDNS_SUBDOMAIN
-printf "%s" "DuckDNS domain2: "
+printf "%s" "DuckDNS domain2 (without .duckdns.org): "
 read DUCKDNS_SUBDOMAIN2
-
 
 # Key pair SSH
 KEY_NAME="ssh-mensagl-2025-${ALUMNO}"
 AMI_ID="ami-04b4f1a9cf54c11d0"          # Ubuntu 24.04 AMI ID
+
+
 
 # Variables for RDS
 RDS_INSTANCE_ID="wordpress-db"
@@ -29,6 +30,14 @@ printf "%s" "RDS Wordpress Username: "
 read DB_USERNAME
 printf "%s" "RDS Wordpress Password: "
 read DB_PASSWORD
+
+
+
+# Variables for RDS
+RDS_INSTANCE_ID="wordpress-db"
+wDBName="wordpress"
+DB_USERNAME="cowboy_del_infierno"
+DB_PASSWORD="_Admin123"
 
 
 ###########################################################################################################
@@ -62,7 +71,6 @@ SUBNET_PRIVATE1=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block "10.0.3.0/
 
 # Private Subnet 2
 SUBNET_PRIVATE2=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block "10.0.4.0/24" --availability-zone $AVAILABILITY_ZONE2 --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=${VPC_NAME}-subnet-private2-${AVAILABILITY_ZONE2}}]" --query 'Subnet.SubnetId' --output text)
-
 # Create Internet Gateway and attach to the VPC
 IGW_ID=$(aws ec2 create-internet-gateway --tag-specifications "ResourceType=internet-gateway,Tags=[{Key=Name,Value=${VPC_NAME}-igw}]" --query 'InternetGateway.InternetGatewayId' --output text)
 aws ec2 attach-internet-gateway --internet-gateway-id $IGW_ID --vpc-id $VPC_ID
@@ -74,21 +82,17 @@ aws ec2 associate-route-table --route-table-id $RTB_PUBLIC --subnet-id $SUBNET_P
 aws ec2 associate-route-table --route-table-id $RTB_PUBLIC --subnet-id $SUBNET_PUBLIC2
 
 # Create Elastic IP and NAT Gateway (Only ONE NAT in AZ1)
-EIP_ALLOC_ID=$(aws ec2 allocate-address --domain vpc --tag-specifications "ResourceType=elastic-ip,Tags=[{Key=Name,Value=${VPC_NAME}-eip-${AVAILABILITY_ZONE1}}]" --query 'AllocationId' --output text)
+EIP_ALLOC_ID=$(aws ec2 allocate-address --domain vpc --query 'AllocationId' --output text)
 NATGW_ID=$(aws ec2 create-nat-gateway --subnet-id $SUBNET_PUBLIC1 --allocation-id $EIP_ALLOC_ID --tag-specifications "ResourceType=natgateway,Tags=[{Key=Name,Value=${VPC_NAME}-nat-public1-${AVAILABILITY_ZONE1}}]" --query 'NatGateway.NatGatewayId' --output text)
 
 # Wait for the NAT Gateway to become available
 aws ec2 wait nat-gateway-available --nat-gateway-ids $NATGW_ID
 
-# Create private route tables and associate private subnets
-RTB_PRIVATE1=$(aws ec2 create-route-table --vpc-id $VPC_ID --tag-specifications "ResourceType=route-table,Tags=[{Key=Name,Value=${VPC_NAME}-rtb-private1-${AVAILABILITY_ZONE1}}]" --query 'RouteTable.RouteTableId' --output text)
-aws ec2 create-route --route-table-id $RTB_PRIVATE1 --destination-cidr-block "0.0.0.0/0" --nat-gateway-id $NATGW_ID
-aws ec2 associate-route-table --route-table-id $RTB_PRIVATE1 --subnet-id $SUBNET_PRIVATE1
-
-RTB_PRIVATE2=$(aws ec2 create-route-table --vpc-id $VPC_ID --tag-specifications "ResourceType=route-table,Tags=[{Key=Name,Value=${VPC_NAME}-rtb-private2-${AVAILABILITY_ZONE2}}]" --query 'RouteTable.RouteTableId' --output text)
-aws ec2 create-route --route-table-id $RTB_PRIVATE2 --destination-cidr-block "0.0.0.0/0" --nat-gateway-id $NATGW_ID
-aws ec2 associate-route-table --route-table-id $RTB_PRIVATE2 --subnet-id $SUBNET_PRIVATE2
-
+# Create a single private route table and associate both private subnets
+RTB_PRIVATE=$(aws ec2 create-route-table --vpc-id $VPC_ID --tag-specifications "ResourceType=route-table,Tags=[{Key=Name,Value=${VPC_NAME}-rtb-private}]" --query 'RouteTable.RouteTableId' --output text)
+aws ec2 create-route --route-table-id $RTB_PRIVATE --destination-cidr-block "0.0.0.0/0" --nat-gateway-id $NATGW_ID
+aws ec2 associate-route-table --route-table-id $RTB_PRIVATE --subnet-id $SUBNET_PRIVATE1
+aws ec2 associate-route-table --route-table-id $RTB_PRIVATE --subnet-id $SUBNET_PRIVATE2
 
 # Final verification (optional)
 #aws ec2 describe-vpcs --vpc-ids $VPC_ID
@@ -131,6 +135,58 @@ aws ec2 authorize-security-group-ingress \
   --protocol tcp \
   --port 443 \
   --cidr $MY_IP
+
+# Add inbound rule to allow 10000
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_PROXY \
+  --protocol tcp \
+  --port 1000 \
+  --cidr $MY_IP
+# Add inbound rule to allow 5269
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_PROXY \
+  --protocol tcp \
+  --port 5269 \
+  --cidr $MY_IP
+# Add inbound rule to allow 4443
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_PROXY \
+  --protocol tcp \
+  --port 4443 \
+  --cidr $MY_IP
+# Add inbound rule to allow 5281
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_PROXY \
+  --protocol tcp \
+  --port 5281 \
+  --cidr $MY_IP
+# Add inbound rule to allow 5280
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_PROXY \
+  --protocol tcp \
+  --port 5280 \
+  --cidr $MY_IP
+# Add inbound rule to allow 5347
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_PROXY \
+  --protocol tcp \
+  --port 5347 \
+  --cidr $MY_IP
+# Add inbound rule to allow 5222
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_PROXY \
+  --protocol tcp \
+  --port 5222 \
+  --cidr $MY_IP
+# Add inbound rule to allow 12345
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_PROXY \
+  --protocol tcp \
+  --port 12345 \
+  --cidr $MY_IP
+
+
+
 
 
 
@@ -200,7 +256,7 @@ aws ec2 authorize-security-group-ingress \
 aws ec2 authorize-security-group-ingress \
   --group-id $SG_ID_XMPP \
   --protocol tcp \
-  --port 1000 \
+  --port 22 \
   --cidr $MY_IP
 # Add inbound rule to allow 12345
 aws ec2 authorize-security-group-ingress \
@@ -276,6 +332,11 @@ aws ec2 authorize-security-group-ingress \
   --protocol tcp \
   --port 443 \
   --cidr $MY_IP
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_WORDPRESS \
+  --protocol -1 \
+  --source-group $SG_ID_PROXY
+
 
 
 echo "Sec Groups Created !";
@@ -329,6 +390,7 @@ chmod +x /opt/duckdns/duckdns.sh
 echo "Updating DuckDNS IP..."
 /opt/duckdns/duckdns.sh
 
+sleep 30
 # Obtain SSL certificate in standalone mode (non-interactive)
 echo "Obtaining SSL certificate using certbot..."
 certbot certonly --standalone \
@@ -338,9 +400,11 @@ certbot certonly --standalone \
   -d "$DUCKDNS_SUBDOMAIN.duckdns.org"
 
 apt install nginx -y
+apt install nginx-extras -y
 # Install and configure NGINX
 echo "Installing and configuring NGINX..."
 cat <<CONFIG > /etc/nginx/sites-available/proxy_site
+# HTTP Reverse Proxy Configuration
 upstream backend_meets {
     server 10.0.3.100:443;
     server 10.0.3.200:443;
@@ -350,7 +414,6 @@ upstream backend_xmpp {
     server 10.0.3.100:12345;
     server 10.0.3.200:12345;
 }
-
 server {
     listen 80;
     server_name $DUCKDNS_SUBDOMAIN.duckdns.org;
@@ -431,10 +494,48 @@ server {
 CONFIG
 ln -s /etc/nginx/sites-available/proxy_site /etc/nginx/sites-enabled/
 rm /etc/nginx/sites-enabled/default
+
+
+# Add stream block to nginx.conf
+cat <<CONFIG2 >> /etc/nginx/nginx.conf
+stream {
+    upstream backend_xmpp_5222 {
+        server 10.0.3.100:5222;
+        server 10.0.3.200:5222;
+    }
+
+    upstream backend_xmpp_5280 {
+        server 10.0.3.100:5280;
+        server 10.0.3.200:5280;
+    }
+
+    upstream backend_xmpp_5281 {
+        server 10.0.3.100:5281;
+        server 10.0.3.200:5281;
+    }
+
+    server {
+        listen 5222;
+        proxy_pass backend_xmpp_5222;
+        proxy_protocol on;
+    }
+
+    server {
+        listen 5280;
+        proxy_pass backend_xmpp_5280;
+        proxy_protocol on;
+    }
+
+    server {
+        listen 5281;
+        proxy_pass backend_xmpp_5281;
+        proxy_protocol on;
+    }
+}
+CONFIG2
 systemctl restart nginx
 systemctl enable nginx
 echo "NGINX installed and configured!"
-
 EOF
 )
 
@@ -457,7 +558,6 @@ echo "${INSTANCE_NAME} created"
 
 
 
-
 # PROXY-2
 # ====== Variables ======
 INSTANCE_NAME="PROXY-2"                 # Tag: Name of the EC2 instance
@@ -468,59 +568,73 @@ PRIVATE_IP="10.0.2.10"                # Private IP for the instance
 INSTANCE_TYPE="t2.micro"                # EC2 Instance Type
 KEY_NAME="${KEY_NAME}"                  # Name of the SSH Key Pair
 VOLUME_SIZE=8                           # Size of the root EBS volume (in GB)
+
 USER_DATA_SCRIPT=$(cat <<'EOF'
 #!/bin/bash
+# Update and install necessary packages
 apt-get update -y
-PUBLIC_IP=$(curl https://ipinfo.io/ip)
-curl -s https://www.duckdns.org/update?domains=$DUCKDNS_SUBDOMAIN2&token=$DUCKDNS_TOKEN&ip=$PUBLIC_IP&verbose=true&clear=true
+apt-get install -y curl certbot
+
+# Set up DuckDNS - Update the DuckDNS IP every 5 minutes
+echo "Setting up DuckDNS update script..."
+mkdir -p /opt/duckdns
+cat <<DUCKDNS_SCRIPT > /opt/duckdns/duckdns.sh
+#!/bin/bash
+echo "Updating DuckDNS: $DUCKDNS_SUBDOMAIN2"
+curl -k "https://www.duckdns.org/update?domains=$DUCKDNS_SUBDOMAIN2&token=$DUCKDNS_TOKEN&ip=" -o /opt/duckdns/duck.log
+DUCKDNS_SCRIPT
+chmod +x /opt/duckdns/duckdns.sh
+(crontab -l 2>/dev/null; echo "*/5 * * * * /opt/duckdns/duckdns.sh >/dev/null 2>&1") | crontab -
+
+# Update DuckDNS immediately to set the IP
+echo "Updating DuckDNS IP..."
+/opt/duckdns/duckdns.sh
 sleep 30
-sudo apt install -y certbot
 # Obtain SSL certificate in standalone mode (non-interactive)
-sudo certbot certonly --standalone \
+echo "Obtaining SSL certificate using certbot..."
+certbot certonly --standalone \
   --non-interactive \
   --agree-tos \
   --email $EMAIL \
   -d "$DUCKDNS_SUBDOMAIN2.duckdns.org"
-sudo chmod 755 /etc/letsencrypt/archive/
-sudo chmod 755 /etc/letsencrypt/archive/${DUCKDNS_SUBDOMAIN2}.duckdns.org/
-sudo chmod 755 /etc/letsencrypt/live/
-sudo chmod 755 /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN2}.duckdns.org/
-
 
 apt-get install nginx -y
+apt install nginx-extras -y
 cat <<CONFIG > /etc/nginx/sites-available/proxy_site
 upstream backend_servers {
-        server 10.0.4.100:443;
-        server 10.0.4.200:443;
+    server 10.0.4.100:443;
+    server 10.0.4.200:443;
 }
 
 server {
-        listen 80;
-        server_name 10.0.2.10;
-
-        location / {
-                proxy_pass http://backend_servers;
-                proxy_set_header Host \$host;
-                proxy_set_header X-Real-IP \$remote_addr;
-                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                proxy_set_header X-Forwarded-Proto \$scheme;
-        }
+    listen 80;
+    server_name $DUCKDNS_SUBDOMAIN2.duckdns.org;
+    return 301 https://\$host\$request_uri;  # Redirect HTTP to HTTPS
 }
+
+server {
+    listen 443 ssl;
+    server_name $DUCKDNS_SUBDOMAIN2.duckdns.org;
+
+    ssl_certificate /etc/letsencrypt/live/$DUCKDNS_SUBDOMAIN2.duckdns.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$DUCKDNS_SUBDOMAIN2.duckdns.org/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    location / {
+        proxy_pass https://backend_servers;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+
 CONFIG
 ln -s /etc/nginx/sites-available/proxy_site /etc/nginx/sites-enabled/
 rm /etc/nginx/sites-enabled/default
 systemctl restart nginx
 systemctl enable nginx
-
-mkdir -p /opt/duckdns
-cd /opt/duckdns
-
-cat <<'DUCKDNS_SCRIPT' > duckdns.sh
-#!/bin/bash
-echo url="https://www.duckdns.org/update?domains=$DUCKDNS_SUBDOMAIN2&token=$DUCKDNS_TOKEN&ip=" | curl -k -o /opt/duckdns/duck.log -K -
-DUCKDNS_SCRIPT
-chmod +x duckdns.sh
-(crontab -l 2>/dev/null; echo "*/5 * * * * /opt/duckdns/duckdns.sh >/dev/null 2>&1") | crontab -
 echo "DDNS installed !"
 EOF
 )
@@ -534,10 +648,12 @@ INSTANCE_ID=$(aws ec2 run-instances \
     --block-device-mappings "DeviceName=/dev/sda1,Ebs={VolumeSize=$VOLUME_SIZE,VolumeType=gp3,DeleteOnTermination=true}" \
     --network-interfaces "SubnetId=$SUBNET_ID,AssociatePublicIpAddress=true,DeviceIndex=0,PrivateIpAddresses=[{Primary=true,PrivateIpAddress=$PRIVATE_IP}],Groups=[$SECURITY_GROUP_ID]" \
     --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$INSTANCE_NAME}]" \
-    --user-data "$(echo "$USER_DATA_SCRIPT" | sed "s/\$DUCKDNS_TOKEN/$DUCKDNS_TOKEN/g" | sed "s/\$EMAIL/$EMAIL/g" )"
+    --user-data "$(echo "$USER_DATA_SCRIPT" | sed "s/\$DUCKDNS_TOKEN/$DUCKDNS_TOKEN/g" | sed "s/\$EMAIL/$EMAIL/g" | sed "s/\$DUCKDNS_SUBDOMAIN2/$DUCKDNS_SUBDOMAIN2/g")" \
     --query "Instances[0].InstanceId" \
     --output text)
-echo "${INSTANCE_NAME} created";
+
+echo "${INSTANCE_NAME} created"
+
 
 
 
@@ -568,7 +684,7 @@ apt-get update -y
 apt-get install mysql-server mysql-client -y
 systemctl start mysql
 systemctl enable mysql
-mysql -e "CREATE DATABASE wordpress;"
+mysql -e "CREATE DATABASE xmpp_db;"
 mysql -e "CREATE USER 'cowboy_del_infierno'@'%' IDENTIFIED BY '_Admin123';"
 mysql -e "GRANT ALL PRIVILEGES ON wordpress.* TO 'cowboy_del_infierno'@'%';"
 mysql -e "FLUSH PRIVILEGES;"
@@ -771,12 +887,6 @@ echo "${INSTANCE_NAME} created";
 
 
 
-
-
-
-
-
-
 ####### WORDPRESS
 
 # WORDPRESS-1
@@ -792,6 +902,7 @@ VOLUME_SIZE=8                           # Size of the root EBS volume (in GB)
 USER_DATA_SCRIPT=$(cat <<'EOF'
 #!/bin/bash
 set -e
+sleep 120
 sudo apt update
 sudo apt install apache2 mysql-client mysql-server php php-mysql -y
 curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
@@ -801,7 +912,7 @@ sudo rm -rf /var/www/html/*
 sudo chmod -R 755 /var/www/html
 sudo chown -R ubuntu:ubuntu /var/www/html
 # MySQL credentials
-MYSQL_CMD="mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD}"
+MYSQL_CMD="sudo mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD}"
 $MYSQL_CMD <<EOF2
 CREATE DATABASE IF NOT EXISTS ${wDBName};
 CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'%' IDENTIFIED BY '${DB_PASSWORD}';
@@ -810,11 +921,25 @@ FLUSH PRIVILEGES;
 EOF2
 sudo -u ubuntu -k -- wp core download --path=/var/www/html
 sudo -u ubuntu -k -- wp core config --dbname=${wDBName} --dbuser=${DB_USERNAME} --dbpass=${DB_PASSWORD} --dbhost=${RDS_ENDPOINT} --dbprefix=wp_ --path=/var/www/html
-sudo -u ubuntu -k -- wp core install --url=10.0.4.100  --title=Site_Title --admin_user=${DB_USERNAME} --admin_password=${DB_PASSWORD} --admin_email=${EMAIL} --path=/var/www/html
-#sudo -u ubuntu -k -- wp option update home 'http://10.0.4.100' --path=/var/www/html
-#sudo -u ubuntu -k -- wp option update siteurl 'http://0.0.4.100' --path=/var/www/html
+sudo -u ubuntu -k -- wp core install --url=${DUCKDNS_SUBDOMAIN}  --title=MensAGL --admin_user=${DB_USERNAME} --admin_password=${DB_PASSWORD} --admin_email=${EMAIL} --path=/var/www/html
+#sudo -u ubuntu -k -- wp option update home 'https://${DUCKDNS_SUBDOMAIN}' --path=/var/www/html
+#sudo -u ubuntu -k -- wp option update siteurl 'https://${DUCKDNS_SUBDOMAIN}' --path=/var/www/html
 sudo -u ubuntu -k -- wp plugin install supportcandy --activate --path=/var/www/html
+echo "
+if(isset(\$_SERVER['HTTP_X_FORWARDED_FOR'])) {
+    \$list = explode(',', \$_SERVER['HTTP_X_FORWARDED_FOR']);
+    \$_SERVER['REMOTE_ADDR'] = \$list[0];
+}
+\$_SERVER['HTTP_HOST'] = '${DUCKDNS_SUBDOMAIN}';
+\$_SERVER['REMOTE_ADDR'] = '${DUCKDNS_SUBDOMAIN}';
+\$_SERVER['SERVER_ADDR'] = '${DUCKDNS_SUBDOMAIN}';
+" | sudo tee -a /var/www/html/wp-config.php
 echo "Wordpress mounted !!"
+
+sudo a2enmod ssl
+sudo a2ensite default-ssl
+sudo a2dissite 000-default
+sudo systemctl restart apache2
 EOF
 )
 
@@ -851,6 +976,7 @@ VOLUME_SIZE=8                           # Size of the root EBS volume (in GB)
 USER_DATA_SCRIPT=$(cat <<'EOF'
 #!/bin/bash
 set -e
+sleep 120
 sudo apt update
 sudo apt install apache2 mysql-client mysql-server php php-mysql -y
 curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
@@ -860,7 +986,7 @@ sudo rm -rf /var/www/html/*
 sudo chmod -R 755 /var/www/html
 sudo chown -R ubuntu:ubuntu /var/www/html
 # MySQL credentials
-MYSQL_CMD="mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD}"
+MYSQL_CMD="sudo mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD}"
 $MYSQL_CMD <<EOF2
 CREATE DATABASE IF NOT EXISTS ${wDBName};
 CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'%' IDENTIFIED BY '${DB_PASSWORD}';
@@ -869,11 +995,25 @@ FLUSH PRIVILEGES;
 EOF2
 sudo -u ubuntu -k -- wp core download --path=/var/www/html
 sudo -u ubuntu -k -- wp core config --dbname=${wDBName} --dbuser=${DB_USERNAME} --dbpass=${DB_PASSWORD} --dbhost=${RDS_ENDPOINT} --dbprefix=wp_ --path=/var/www/html
-sudo -u ubuntu -k -- wp core install --url=10.0.4.200  --title=Site_Title --admin_user=${DB_USERNAME} --admin_password=${DB_PASSWORD} --admin_email=${EMAIL} --path=/var/www/html
-#sudo -u ubuntu -k -- wp option update home 'http://10.0.4.200' --path=/var/www/html
-#sudo -u ubuntu -k -- wp option update siteurl 'http://0.0.4.200' --path=/var/www/html
+sudo -u ubuntu -k -- wp core install --url=${DUCKDNS_SUBDOMAIN2}  --title=MensAGL --admin_user=${DB_USERNAME} --admin_password=${DB_PASSWORD} --admin_email=${EMAIL} --path=/var/www/html
+#sudo -u ubuntu -k -- wp option update home 'https://${DUCKDNS_SUBDOMAIN2}' --path=/var/www/html
+#sudo -u ubuntu -k -- wp option update siteurl 'https://${DUCKDNS_SUBDOMAIN2}' --path=/var/www/html
 sudo -u ubuntu -k -- wp plugin install supportcandy --activate --path=/var/www/html
+echo "
+if(isset(\$_SERVER['HTTP_X_FORWARDED_FOR'])) {
+    \$list = explode(',', \$_SERVER['HTTP_X_FORWARDED_FOR']);
+    \$_SERVER['REMOTE_ADDR'] = \$list[0];
+}
+\$_SERVER['HTTP_HOST'] = '${DUCKDNS_SUBDOMAIN}';
+\$_SERVER['REMOTE_ADDR'] = '${DUCKDNS_SUBDOMAIN}';
+\$_SERVER['SERVER_ADDR'] = '${DUCKDNS_SUBDOMAIN}';
+" | sudo tee -a /var/www/html/wp-config.php
 echo "Wordpress mounted !!"
+
+sudo a2enmod ssl
+sudo a2ensite default-ssl
+sudo a2dissite 000-default
+sudo systemctl restart apache2
 EOF
 )
 
