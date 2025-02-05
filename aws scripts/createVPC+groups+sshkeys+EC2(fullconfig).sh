@@ -139,8 +139,8 @@ aws ec2 authorize-security-group-ingress \
 # Add inbound rule to allow 10000
 aws ec2 authorize-security-group-ingress \
   --group-id $SG_ID_PROXY \
-  --protocol tcp \
-  --port 1000 \
+  --protocol udp \
+  --port 10000 \
   --cidr $MY_IP
 # Add inbound rule to allow 5269
 aws ec2 authorize-security-group-ingress \
