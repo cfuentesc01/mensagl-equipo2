@@ -19,18 +19,18 @@ FLUSH PRIVILEGES;
 EOF2
 sudo -u ubuntu -k -- wp core download --path=/var/www/html
 sudo -u ubuntu -k -- wp core config --dbname=${wDBName} --dbuser=${DB_USERNAME} --dbpass=${DB_PASSWORD} --dbhost=${RDS_ENDPOINT} --dbprefix=wp_ --path=/var/www/html
-sudo -u ubuntu -k -- wp core install --url=${DUCKDNS_SUBDOMAIN}  --title=MensAGL --admin_user=${DB_USERNAME} --admin_password=${DB_PASSWORD} --admin_email=${EMAIL} --path=/var/www/html
-#sudo -u ubuntu -k -- wp option update home 'https://${DUCKDNS_SUBDOMAIN}' --path=/var/www/html
-#sudo -u ubuntu -k -- wp option update siteurl 'https://${DUCKDNS_SUBDOMAIN}' --path=/var/www/html
+sudo -u ubuntu -k -- wp core install --url=${DUCKDNS_SUBDOMAIN2}  --title=MensAGL --admin_user=${DB_USERNAME} --admin_password=${DB_PASSWORD} --admin_email=${EMAIL} --path=/var/www/html
+#sudo -u ubuntu -k -- wp option update home 'https://${DUCKDNS_SUBDOMAIN2}' --path=/var/www/html
+#sudo -u ubuntu -k -- wp option update siteurl 'https://${DUCKDNS_SUBDOMAIN2}' --path=/var/www/html
 sudo -u ubuntu -k -- wp plugin install supportcandy --activate --path=/var/www/html
 echo "
 if(isset(\$_SERVER['HTTP_X_FORWARDED_FOR'])) {
     \$list = explode(',', \$_SERVER['HTTP_X_FORWARDED_FOR']);
     \$_SERVER['REMOTE_ADDR'] = \$list[0];
 }
-\$_SERVER['HTTP_HOST'] = '${DUCKDNS_SUBDOMAIN}';
-\$_SERVER['REMOTE_ADDR'] = '${DUCKDNS_SUBDOMAIN}';
-\$_SERVER['SERVER_ADDR'] = '${DUCKDNS_SUBDOMAIN}';
+\$_SERVER['HTTP_HOST'] = '${DUCKDNS_SUBDOMAIN2}';
+\$_SERVER['REMOTE_ADDR'] = '${DUCKDNS_SUBDOMAIN2}';
+\$_SERVER['SERVER_ADDR'] = '${DUCKDNS_SUBDOMAIN2}';
 " | sudo tee -a /var/www/html/wp-config.php
 echo "Wordpress mounted !!"
 
