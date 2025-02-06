@@ -4,7 +4,7 @@
 # The name of the user for lab
 printf "%s" "Insert personal name: "
 read ALUMNO
-# The name of the user for lab
+# The mail for certs and wordpress config
 printf "%s" "Insert email: "
 read EMAIL
 
