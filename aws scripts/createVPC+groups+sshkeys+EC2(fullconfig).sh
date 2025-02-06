@@ -9,12 +9,19 @@ printf "%s" "Insert email: "
 read EMAIL
 
 # DuckDNS variables
-printf "%s" "DuckDNS token: "
-read DUCKDNS_TOKEN
-printf "%s" "DuckDNS domain1 (without .duckdns.org): "
-read DUCKDNS_SUBDOMAIN
-printf "%s" "DuckDNS domain2 (without .duckdns.org): "
-read DUCKDNS_SUBDOMAIN2
+#printf "%s" "DuckDNS token: "
+#read DUCKDNS_TOKEN
+#printf "%s" "DuckDNS domain1: "
+#read DUCKDNS_SUBDOMAIN
+#printf "%s" "DuckDNS domain2: "
+#read DUCKDNS_SUBDOMAIN2
+
+DUCKDNS_TOKEN="3b14a271-59be-4fcb-adee-5e464299e8ba"
+#DUCKDNS_SUBDOMAIN="mensagl-marioaja"
+DUCKDNS_SUBDOMAIN="supertest1"
+#DUCKDNS_SUBDOMAIN2="mensagl-marioaja"
+DUCKDNS_SUBDOMAIN2="supertest2"
+
 
 # Key pair SSH
 KEY_NAME="ssh-mensagl-2025-${ALUMNO}"
@@ -23,13 +30,13 @@ AMI_ID="ami-04b4f1a9cf54c11d0"          # Ubuntu 24.04 AMI ID
 
 
 # Variables for RDS
-RDS_INSTANCE_ID="wordpress-db"
-printf "%s" "RDS Wordpress Database: "
-read wDBName
-printf "%s" "RDS Wordpress Username: "
-read DB_USERNAME
-printf "%s" "RDS Wordpress Password: "
-read DB_PASSWORD
+#RDS_INSTANCE_ID="wordpress-db"
+#printf "%s" "RDS Wordpress Database: "
+#read wDBName
+#printf "%s" "RDS Wordpress Username: "
+#read DB_USERNAME
+#printf "%s" "RDS Wordpress Password: "
+#read DB_PASSWORD
 
 
 
@@ -209,6 +216,12 @@ aws ec2 authorize-security-group-ingress \
   --group-id $SG_ID_XMPP \
   --protocol tcp \
   --port 5269 \
+  --cidr $MY_IP
+# Add inbound rule to allow 5270
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_XMPP \
+  --protocol tcp \
+  --port 5270 \
   --cidr $MY_IP
 # Add inbound rule to allow 4443
 aws ec2 authorize-security-group-ingress \
@@ -399,15 +412,22 @@ certbot certonly --standalone \
   --email $EMAIL \
   -d "$DUCKDNS_SUBDOMAIN.duckdns.org"
 
+certbot certonly --standalone \
+  --non-interactive \
+  --agree-tos \
+  --email $EMAIL \
+  -d "*.$DUCKDNS_SUBDOMAIN.duckdns.org"
+
+
 apt install nginx -y
 apt install nginx-extras -y
 # Install and configure NGINX
 echo "Installing and configuring NGINX..."
 cat <<CONFIG > /etc/nginx/sites-available/proxy_site
-# HTTP Reverse Proxy Configuration
 upstream backend_meets {
-    server 10.0.3.100:443;
-    server 10.0.3.200:443;
+#    server 10.0.3.100:443;
+#    server 10.0.3.200:443;
+    server 10.0.3.150:443;
 }
 
 upstream backend_xmpp {
@@ -416,79 +436,80 @@ upstream backend_xmpp {
 }
 server {
     listen 80;
-    server_name $DUCKDNS_SUBDOMAIN.duckdns.org;
+    server_name ${DUCKDNS_SUBDOMAIN}.duckdns.org upload.${DUCKDNS_SUBDOMAIN}.duckdns.org;
 
     location /.well-known/acme-challenge/ {
         root /var/www/html;
     }
 
     location / {
-        return 403;
+        return 301 https://$host$request_uri;
     }
 
     location /llamadas {
-        return 301 https://\$host\$request_uri;
+        return 301 https://$host$request_uri;
     }
 
     location /xmpp {
-        return 301 https://\$host\$request_uri;
+        return 301 https://$host$request_uri;
     }
 }
 
 server {
     listen 443 ssl;
-    server_name $DUCKDNS_SUBDOMAIN.duckdns.org;
+    server_name ${DUCKDNS_SUBDOMAIN}.duckdns.org;
 
-    ssl_certificate /etc/letsencrypt/live/$DUCKDNS_SUBDOMAIN.duckdns.org/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$DUCKDNS_SUBDOMAIN.duckdns.org/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org/privkey.pem;
 
     # Redirect root (/) to /llamadas
-    location / {
-        return 301 https://\$host/llamadas;
-    }
+#    location / {
+#        return 301 https://$host/llamadas;
+#    }
 
     # Strip /llamadas before sending to Jitsi
     location /llamadas/ {
-        rewrite ^/llamadas(/.*)\$ \$1 break;
+#    location / {
+        rewrite ^/llamadas(/.*)$ $1 break;
         proxy_pass https://backend_meets;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     # Allow Jitsi static files (CSS, JS, images)
     location /libs/ {
         proxy_pass https://backend_meets;
-        proxy_set_header Host \$host;
+        proxy_set_header Host $host;
     }
 
     location /css/ {
         proxy_pass https://backend_meets;
-        proxy_set_header Host \$host;
+        proxy_set_header Host $host;
     }
 
     location /static/ {
         proxy_pass https://backend_meets;
-        proxy_set_header Host \$host;
+        proxy_set_header Host $host;
     }
 
     location /images/ {
         proxy_pass https://backend_meets;
-        proxy_set_header Host \$host;
+        proxy_set_header Host $host;
     }
 
     location /sounds/ {
         proxy_pass https://backend_meets;
-        proxy_set_header Host \$host;
+        proxy_set_header Host $host;
     }
 
     location /xmpp {
         proxy_pass http://backend_xmpp;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 CONFIG
@@ -514,22 +535,80 @@ stream {
         server 10.0.3.200:5281;
     }
 
+    upstream backend_xmpp_5347 {
+        server 10.0.3.100:5347;
+        server 10.0.3.200:5347;
+    }
+
+    upstream backend_xmpp_4443 {
+        server 10.0.3.100:4443;
+        server 10.0.3.200:4443;
+    }
+
+    upstream backend_xmpp_10000 {
+        server 10.0.3.100:10000;
+        server 10.0.3.200:10000;
+    }
+
+    upstream backend_xmpp_5269 {
+        server 10.0.3.100:5269;
+        server 10.0.3.200:5269;
+    }
+    upstream backend_xmpp_5270 {
+        server 10.0.3.100:5270;
+        server 10.0.3.200:5270;
+    }
+
     server {
         listen 5222;
         proxy_pass backend_xmpp_5222;
-        proxy_protocol on;
+#        proxy_protocol on;
     }
 
     server {
         listen 5280;
         proxy_pass backend_xmpp_5280;
-        proxy_protocol on;
+#        proxy_protocol on;
     }
 
     server {
         listen 5281;
         proxy_pass backend_xmpp_5281;
-        proxy_protocol on;
+ #       proxy_protocol on;
+    }
+
+    server {
+        listen 5347;
+        proxy_pass backend_xmpp_5347;
+#        proxy_protocol on;
+    }
+    server {
+        listen 4443;
+        proxy_pass backend_xmpp_4443;
+#        proxy_protocol on;
+    }
+    server {
+        listen 10000;
+        proxy_pass backend_xmpp_10000;
+#        proxy_protocol on;
+    }
+
+    server {
+        listen 5269;
+        proxy_pass backend_xmpp_5269;
+#        proxy_protocol on;
+#       ssl_certificate /etc/letsencrypt/${DUCKDNS_SUBDOMAIN}.duckdns.org/fullchain.pem;
+#       ssl_certificate_key /etc/letsencrypt/${DUCKDNS_SUBDOMAIN}.duckdns.org/keyfile.pem;
+        proxy_ssl_verify off;
+    }
+
+    server {
+        listen 5270;
+        proxy_pass backend_xmpp_5270;
+#        proxy_protocol on;
+#        ssl_certificate /etc/letsencrypt/${DUCKDNS_SUBDOMAIN}.duckdns.org/fullchain.pem;
+#        ssl_certificate_key /etc/letsencrypt/${DUCKDNS_SUBDOMAIN}.duckdns.org/keyfile.pem;
+        proxy_ssl_verify off;
     }
 }
 CONFIG2
@@ -833,7 +912,102 @@ PRIVATE_IP="10.0.3.100"                # Private IP for the instance
 INSTANCE_TYPE="t2.micro"                # EC2 Instance Type
 KEY_NAME="${KEY_NAME}"                  # Name of the SSH Key Pair
 VOLUME_SIZE=8                           # Size of the root EBS volume (in GB)
+USER_DATA_SCRIPT=$(cat <<'EOF'
+#!/bin/bash
+set -e
+sudo apt update -y
+sudo apt install prosody -y
+sudo rm -rf /etc/prosody/prosody.cfg.lua
 
+cat <<CONFIG > /etc/prosody/prosody.cfg.lua
+plugin_paths = { "/usr/src/prosody-modules" } -- non-standard plugin path so we can keep them up to date with mercurial
+modules_enabled = {
+                "roster"; -- Allow users to have a roster. Recommended ;)
+                "saslauth"; -- Authentication for clients and servers. Recommended if you want to log in.
+                "tls"; -- Add support for secure TLS on c2s/s2s connections
+                "dialback"; -- s2s dialback support
+                "disco"; -- Service discovery
+                "private"; -- Private XML storage (for room bookmarks, etc.)
+                "vcard4"; -- User Profiles (stored in PEP)
+                "vcard_legacy"; -- Conversion between legacy vCard and PEP Avatar, vcard
+                "version"; -- Replies to server version requests
+                "uptime"; -- Report how long server has been running
+                "time"; -- Let others know the time here on this server
+                "ping"; -- Replies to XMPP pings with pongs
+                "register"; --Allows clients to register an account on your server
+                "pep"; -- Enables users to publish their mood, activity, playing music and more
+                "carbons"; -- XEP-0280: Message Carbons, synchronize messages accross devices
+                "smacks"; -- XEP-0198: Stream Management, keep chatting even when the network drops for a few seconds
+                "mam"; -- XEP-0313: Message Archive Management, allows to retrieve chat history from server
+                "csi_simple"; -- XEP-0352: Client State Indication
+                "admin_adhoc"; -- Allows administration via an XMPP client that supports ad-hoc commands
+                "blocklist"; -- XEP-0191  blocking of users
+                "bookmarks"; -- Synchronize currently joined groupchat between different clients.
+                "server_contact_info"; --add contact info in the case of issues with the server
+                --"cloud_notify"; -- Support for XEP-0357 Push Notifications for compatibility with ChatSecure/iOS.
+                -- iOS typically end the connection when an app runs in the background and requires use of Apple's Push servers to wake up and receive a message. Enabling this module allows your server to do that for your contacts on iOS.
+                -- However we leave it commented out as it is another example of vertically integrated cloud platforms at odds with federation, with all the meta-data-based surveillance consequences that that might have.
+                "bosh";
+                "websocket";
+                's2s_bidi';
+                's2s_whitelist';
+                's2sout_override';
+                'certs_s2soutinjection';
+                's2s_auth_certs';
+                's2s_auth_dane_in';
+                's2s';
+                'scansion_record';
+                'server_contact_info';
+};
+allow_registration = false; -- Enable to allow people to register accounts on your server from their clients, for more information see http://prosody.im/doc/creating_accounts
+certificates = "/etc/prosody/certs" -- Path where prosody looks for the certificates see: https://prosody.im/doc/letsencrypt
+--https_certificate = "certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.crt"
+c2s_require_encryption = true -- Force clients to use encrypted connections
+s2s_secure_auth = true
+s2s_secure_domains = { "openfire-equipo45.duckdns.org" };
+pidfile = "/var/run/prosody/prosody.pid"
+authentication = "internal_hashed"
+archive_expires_after = "1w" -- Remove archived messages after 1 week
+log = { --disable for extra privacy
+        info = "/var/log/prosody/prosody.log"; -- Change 'info' to 'debug' for verbose logging
+        error = "/var/log/prosody/prosody.err";
+        "*syslog";
+}
+    disco_items = { -- allows clients to find the capabilities of your server
+        {"upload.${DUCKDNS_SUBDOMAIN}.duckdns.org", "file uploads"};
+        {"lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org", "group chats"};
+}
+admin = { "mario@${DUCKDNS_SUBDOMAIN}.duckdns.org" };
+VirtualHost "${DUCKDNS_SUBDOMAIN}.duckdns.org"
+ssl = {
+    certificate = "certs/${DUCKDNS_SUBDOMAIN}.duckdns.org.crt",
+    key = "certs/${DUCKDNS_SUBDOMAIN}.duckdns.org.key",
+}
+Component "upload.${DUCKDNS_SUBDOMAIN}.duckdns.org" "http_upload"
+ssl = {
+    certificate = "/etc/prosody/certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.crt",
+    key = "/etc/prosody/certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.key",
+}
+Component "lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org" "muc"
+ssl = {
+    certificate = "/etc/prosody/certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.crt",
+    key = "/etc/prosody/certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.key",
+}
+modules_enabled = { "muc_mam", "vcard_muc" } -- enable archives and avatars for group chats
+restrict_room_creation = "admin"
+default_config = {persistent = false;}
+Component "proxy.${DUCKDNS_SUBDOMAIN}.duckdns.org" "proxy65"
+ssl = {
+    certificate = "/etc/prosody/certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.crt",
+    key = "/etc/prosody/certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.key",
+}
+CONFIG
+
+sudo prosodyctl register mario ${DUCKDNS_SUBDOMAIN}.duckdns.org Admin123
+sudo prosodyctl register carlos ${DUCKDNS_SUBDOMAIN}.duckdns.org Admin123
+sudo systemctl restart prosody
+EOF
+)
 
 # ====== Create EC2 Instance ======
 INSTANCE_ID=$(aws ec2 run-instances \
@@ -844,6 +1018,7 @@ INSTANCE_ID=$(aws ec2 run-instances \
     --network-interfaces "SubnetId=$SUBNET_ID,AssociatePublicIpAddress=true,DeviceIndex=0,PrivateIpAddresses=[{Primary=true,PrivateIpAddress=$PRIVATE_IP}],Groups=[$SECURITY_GROUP_ID]" \
     --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$INSTANCE_NAME}]" \
     --query "Instances[0].InstanceId" \
+    --user-data "$(echo "$USER_DATA_SCRIPT" | sed "s/\$DUCKDNS_SUBDOMAIN/$DUCKDNS_SUBDOMAIN/g")" \
     --output text)
 echo "${INSTANCE_NAME} created";
 
@@ -859,7 +1034,102 @@ PRIVATE_IP="10.0.3.200"                # Private IP for the instance
 INSTANCE_TYPE="t2.micro"                # EC2 Instance Type
 KEY_NAME="${KEY_NAME}"                  # Name of the SSH Key Pair
 VOLUME_SIZE=8                           # Size of the root EBS volume (in GB)
+USER_DATA_SCRIPT=$(cat <<'EOF'
+#!/bin/bash
+set -e
+sudo apt update -y
+sudo apt install prosody -y
+sudo rm -rf /etc/prosody/prosody.cfg.lua
 
+cat <<CONFIG > /etc/prosody/prosody.cfg.lua
+plugin_paths = { "/usr/src/prosody-modules" } -- non-standard plugin path so we can keep them up to date with mercurial
+modules_enabled = {
+                "roster"; -- Allow users to have a roster. Recommended ;)
+                "saslauth"; -- Authentication for clients and servers. Recommended if you want to log in.
+                "tls"; -- Add support for secure TLS on c2s/s2s connections
+                "dialback"; -- s2s dialback support
+                "disco"; -- Service discovery
+                "private"; -- Private XML storage (for room bookmarks, etc.)
+                "vcard4"; -- User Profiles (stored in PEP)
+                "vcard_legacy"; -- Conversion between legacy vCard and PEP Avatar, vcard
+                "version"; -- Replies to server version requests
+                "uptime"; -- Report how long server has been running
+                "time"; -- Let others know the time here on this server
+                "ping"; -- Replies to XMPP pings with pongs
+                "register"; --Allows clients to register an account on your server
+                "pep"; -- Enables users to publish their mood, activity, playing music and more
+                "carbons"; -- XEP-0280: Message Carbons, synchronize messages accross devices
+                "smacks"; -- XEP-0198: Stream Management, keep chatting even when the network drops for a few seconds
+                "mam"; -- XEP-0313: Message Archive Management, allows to retrieve chat history from server
+                "csi_simple"; -- XEP-0352: Client State Indication
+                "admin_adhoc"; -- Allows administration via an XMPP client that supports ad-hoc commands
+                "blocklist"; -- XEP-0191  blocking of users
+                "bookmarks"; -- Synchronize currently joined groupchat between different clients.
+                "server_contact_info"; --add contact info in the case of issues with the server
+                --"cloud_notify"; -- Support for XEP-0357 Push Notifications for compatibility with ChatSecure/iOS.
+                -- iOS typically end the connection when an app runs in the background and requires use of Apple's Push servers to wake up and receive a message. Enabling this module allows your server to do that for your contacts on iOS.
+                -- However we leave it commented out as it is another example of vertically integrated cloud platforms at odds with federation, with all the meta-data-based surveillance consequences that that might have.
+                "bosh";
+                "websocket";
+                's2s_bidi';
+                's2s_whitelist';
+                's2sout_override';
+                'certs_s2soutinjection';
+                's2s_auth_certs';
+                's2s_auth_dane_in';
+                's2s';
+                'scansion_record';
+                'server_contact_info';
+};
+allow_registration = false; -- Enable to allow people to register accounts on your server from their clients, for more information see http://prosody.im/doc/creating_accounts
+certificates = "/etc/prosody/certs" -- Path where prosody looks for the certificates see: https://prosody.im/doc/letsencrypt
+--https_certificate = "certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.crt"
+c2s_require_encryption = true -- Force clients to use encrypted connections
+s2s_secure_auth = true
+s2s_secure_domains = { "openfire-equipo45.duckdns.org" };
+pidfile = "/var/run/prosody/prosody.pid"
+authentication = "internal_hashed"
+archive_expires_after = "1w" -- Remove archived messages after 1 week
+log = { --disable for extra privacy
+        info = "/var/log/prosody/prosody.log"; -- Change 'info' to 'debug' for verbose logging
+        error = "/var/log/prosody/prosody.err";
+        "*syslog";
+}
+    disco_items = { -- allows clients to find the capabilities of your server
+        {"upload.${DUCKDNS_SUBDOMAIN}.duckdns.org", "file uploads"};
+        {"lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org", "group chats"};
+}
+admin = { "mario@${DUCKDNS_SUBDOMAIN}.duckdns.org" };
+VirtualHost "${DUCKDNS_SUBDOMAIN}.duckdns.org"
+ssl = {
+    certificate = "certs/${DUCKDNS_SUBDOMAIN}.duckdns.org.crt",
+    key = "certs/${DUCKDNS_SUBDOMAIN}.duckdns.org.key",
+}
+Component "upload.${DUCKDNS_SUBDOMAIN}.duckdns.org" "http_upload"
+ssl = {
+    certificate = "/etc/prosody/certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.crt",
+    key = "/etc/prosody/certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.key",
+}
+Component "lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org" "muc"
+ssl = {
+    certificate = "/etc/prosody/certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.crt",
+    key = "/etc/prosody/certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.key",
+}
+modules_enabled = { "muc_mam", "vcard_muc" } -- enable archives and avatars for group chats
+restrict_room_creation = "admin"
+default_config = {persistent = false;}
+Component "proxy.${DUCKDNS_SUBDOMAIN}.duckdns.org" "proxy65"
+ssl = {
+    certificate = "/etc/prosody/certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.crt",
+    key = "/etc/prosody/certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.key",
+}
+CONFIG
+
+sudo prosodyctl register mario ${DUCKDNS_SUBDOMAIN}.duckdns.org Admin123
+sudo prosodyctl register carlos ${DUCKDNS_SUBDOMAIN}.duckdns.org Admin123
+sudo systemctl restart prosody
+EOF
+)
 
 # ====== Create EC2 Instance ======
 INSTANCE_ID=$(aws ec2 run-instances \
@@ -870,8 +1140,10 @@ INSTANCE_ID=$(aws ec2 run-instances \
     --network-interfaces "SubnetId=$SUBNET_ID,AssociatePublicIpAddress=true,DeviceIndex=0,PrivateIpAddresses=[{Primary=true,PrivateIpAddress=$PRIVATE_IP}],Groups=[$SECURITY_GROUP_ID]" \
     --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$INSTANCE_NAME}]" \
     --query "Instances[0].InstanceId" \
+    --user-data "$(echo "$USER_DATA_SCRIPT" | sed "s/\$DUCKDNS_SUBDOMAIN/$DUCKDNS_SUBDOMAIN/g")" \
     --output text)
 echo "${INSTANCE_NAME} created";
+
 
 
 
@@ -921,18 +1193,18 @@ FLUSH PRIVILEGES;
 EOF2
 sudo -u ubuntu -k -- wp core download --path=/var/www/html
 sudo -u ubuntu -k -- wp core config --dbname=${wDBName} --dbuser=${DB_USERNAME} --dbpass=${DB_PASSWORD} --dbhost=${RDS_ENDPOINT} --dbprefix=wp_ --path=/var/www/html
-sudo -u ubuntu -k -- wp core install --url=${DUCKDNS_SUBDOMAIN}  --title=MensAGL --admin_user=${DB_USERNAME} --admin_password=${DB_PASSWORD} --admin_email=${EMAIL} --path=/var/www/html
-#sudo -u ubuntu -k -- wp option update home 'https://${DUCKDNS_SUBDOMAIN}' --path=/var/www/html
-#sudo -u ubuntu -k -- wp option update siteurl 'https://${DUCKDNS_SUBDOMAIN}' --path=/var/www/html
+sudo -u ubuntu -k -- wp core install --url=${DUCKDNS_SUBDOMAIN2}  --title=MensAGL --admin_user=${DB_USERNAME} --admin_password=${DB_PASSWORD} --admin_email=${EMAIL} --path=/var/www/html
+#sudo -u ubuntu -k -- wp option update home 'https://${DUCKDNS_SUBDOMAIN2}' --path=/var/www/html
+#sudo -u ubuntu -k -- wp option update siteurl 'https://${DUCKDNS_SUBDOMAIN2}' --path=/var/www/html
 sudo -u ubuntu -k -- wp plugin install supportcandy --activate --path=/var/www/html
 echo "
 if(isset(\$_SERVER['HTTP_X_FORWARDED_FOR'])) {
     \$list = explode(',', \$_SERVER['HTTP_X_FORWARDED_FOR']);
     \$_SERVER['REMOTE_ADDR'] = \$list[0];
 }
-\$_SERVER['HTTP_HOST'] = '${DUCKDNS_SUBDOMAIN}';
-\$_SERVER['REMOTE_ADDR'] = '${DUCKDNS_SUBDOMAIN}';
-\$_SERVER['SERVER_ADDR'] = '${DUCKDNS_SUBDOMAIN}';
+\$_SERVER['HTTP_HOST'] = '${DUCKDNS_SUBDOMAIN2}';
+\$_SERVER['REMOTE_ADDR'] = '${DUCKDNS_SUBDOMAIN2}';
+\$_SERVER['SERVER_ADDR'] = '${DUCKDNS_SUBDOMAIN2}';
 " | sudo tee -a /var/www/html/wp-config.php
 echo "Wordpress mounted !!"
 
@@ -1004,9 +1276,9 @@ if(isset(\$_SERVER['HTTP_X_FORWARDED_FOR'])) {
     \$list = explode(',', \$_SERVER['HTTP_X_FORWARDED_FOR']);
     \$_SERVER['REMOTE_ADDR'] = \$list[0];
 }
-\$_SERVER['HTTP_HOST'] = '${DUCKDNS_SUBDOMAIN}';
-\$_SERVER['REMOTE_ADDR'] = '${DUCKDNS_SUBDOMAIN}';
-\$_SERVER['SERVER_ADDR'] = '${DUCKDNS_SUBDOMAIN}';
+\$_SERVER['HTTP_HOST'] = '${DUCKDNS_SUBDOMAIN2}';
+\$_SERVER['REMOTE_ADDR'] = '${DUCKDNS_SUBDOMAIN2}';
+\$_SERVER['SERVER_ADDR'] = '${DUCKDNS_SUBDOMAIN2}';
 " | sudo tee -a /var/www/html/wp-config.php
 echo "Wordpress mounted !!"
 
