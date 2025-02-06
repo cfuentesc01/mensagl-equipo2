@@ -2,7 +2,7 @@
 set -e
 
 
-# The name of the user for lab
+# The mail for certs and wordpress config
 printf "%s" "Insert email: "
 read EMAIL
 #printf "%s" "DuckDNS domain2: "
