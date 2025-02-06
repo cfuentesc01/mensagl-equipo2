@@ -28,9 +28,9 @@ if(isset(\$_SERVER['HTTP_X_FORWARDED_FOR'])) {
     \$list = explode(',', \$_SERVER['HTTP_X_FORWARDED_FOR']);
     \$_SERVER['REMOTE_ADDR'] = \$list[0];
 }
-\$_SERVER['HTTP_HOST'] = '${DUCKDNS_SUBDOMAIN}';
-\$_SERVER['REMOTE_ADDR'] = '${DUCKDNS_SUBDOMAIN}';
-\$_SERVER['SERVER_ADDR'] = '${DUCKDNS_SUBDOMAIN}';
+\$_SERVER['HTTP_HOST'] = '${DUCKDNS_SUBDOMAIN2}';
+\$_SERVER['REMOTE_ADDR'] = '${DUCKDNS_SUBDOMAIN2}';
+\$_SERVER['SERVER_ADDR'] = '${DUCKDNS_SUBDOMAIN2}';
 " | sudo tee -a /var/www/html/wp-config.php
 echo "Wordpress mounted !!"
 
