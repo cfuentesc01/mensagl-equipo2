@@ -45,6 +45,7 @@ Tambíen existen otros scripts de AWS CLI para crear objetos en AWS de forma sep
 3. Responder a las cuestiones 📄
 
 - `User` - Un nombre usado para añadir a las etiquetas de objetos, personalizando el esquema.
+- `Email` - Correo electrónico para la gestión de cecrtificados y configuración de WordPress.
 - `DuckDNS API` - Token proporcionado por DuckDNS en su página web.
 - `dominios DuckDNS` - 2 Dominios DuckDNS a utlizar, tanto para el servico de mensajería como el de incidencias.
 - `RDS Wordpress Database` - Nombre de la base de datos para el RDS Wordpress.
