@@ -1,5 +1,23 @@
 #!/bin/bash
 set -e
+
+
+# The name of the user for lab
+printf "%s" "Insert email: "
+read EMAIL
+#printf "%s" "DuckDNS domain2: "
+read DUCKDNS_SUBDOMAIN2
+# Variables for RDS
+printf "%s" "RDS Direction (IP or URL): "
+read RDS_ENDPOINT
+printf "%s" "RDS Wordpress Database: "
+read wDBName
+printf "%s" "RDS Wordpress Username: "
+read DB_USERNAME
+printf "%s" "RDS Wordpress Password: "
+read DB_PASSWORD
+
+
 sleep 120
 sudo apt update
 sudo apt install apache2 mysql-client mysql-server php php-mysql -y
