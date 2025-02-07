@@ -19,7 +19,7 @@ El servicio de mensajería se compone de:
 
 El servicio de incidencias se compone de:
 - Proxy publico con dominio dinámico (DDNS) `DuckDNS`. 🌐
-- Clúster CMS `Wordpress` coon sistema de tickets / resolución de incidencias. 👷
+- Clúster CMS `Wordpress` con sistema de tickets / resolución de incidencias. 👷
 - Instancia `RDS MySQL` AWS como base de datos flexible para el clúster CMS. 🚩
 
 ## Instalación 🔧
