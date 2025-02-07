@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# sudo prosodyctl --root cert import /etc/certs/
 
 # The name of the user for lab
 printf "%s" "Insert personal name: "
@@ -9,18 +10,12 @@ printf "%s" "Insert email: "
 read EMAIL
 
 # DuckDNS variables
-#printf "%s" "DuckDNS token: "
-#read DUCKDNS_TOKEN
-#printf "%s" "DuckDNS domain1: "
-#read DUCKDNS_SUBDOMAIN
-#printf "%s" "DuckDNS domain2: "
-#read DUCKDNS_SUBDOMAIN2
-
-DUCKDNS_TOKEN="3b14a271-59be-4fcb-adee-5e464299e8ba"
-#DUCKDNS_SUBDOMAIN="mensagl-marioaja"
-DUCKDNS_SUBDOMAIN="supertest1"
-#DUCKDNS_SUBDOMAIN2="mensagl-marioaja"
-DUCKDNS_SUBDOMAIN2="supertest2"
+printf "%s" "DuckDNS token: "
+read DUCKDNS_TOKEN
+printf "%s" "DuckDNS domain1: "
+read DUCKDNS_SUBDOMAIN
+printf "%s" "DuckDNS domain2: "
+read DUCKDNS_SUBDOMAIN2
 
 
 # Key pair SSH
@@ -28,23 +23,14 @@ KEY_NAME="ssh-mensagl-2025-${ALUMNO}"
 AMI_ID="ami-04b4f1a9cf54c11d0"          # Ubuntu 24.04 AMI ID
 
 
-
-# Variables for RDS
-#RDS_INSTANCE_ID="wordpress-db"
-#printf "%s" "RDS Wordpress Database: "
-#read wDBName
-#printf "%s" "RDS Wordpress Username: "
-#read DB_USERNAME
-#printf "%s" "RDS Wordpress Password: "
-#read DB_PASSWORD
-
-
-
 # Variables for RDS
 RDS_INSTANCE_ID="wordpress-db"
-wDBName="wordpress"
-DB_USERNAME="cowboy_del_infierno"
-DB_PASSWORD="_Admin123"
+printf "%s" "RDS Wordpress Database: "
+read wDBName
+printf "%s" "RDS Wordpress Username: "
+read DB_USERNAME
+printf "%s" "RDS Wordpress Password: "
+read DB_PASSWORD
 
 
 ###########################################################################################################
@@ -761,15 +747,24 @@ USER_DATA_SCRIPT=$(cat <<'EOF'
 set -e
 apt-get update -y
 apt-get install mysql-server mysql-client -y
-systemctl start mysql
-systemctl enable mysql
-mysql -e "CREATE DATABASE xmpp_db;"
-mysql -e "CREATE USER 'cowboy_del_infierno'@'%' IDENTIFIED BY '_Admin123';"
-mysql -e "GRANT ALL PRIVILEGES ON wordpress.* TO 'cowboy_del_infierno'@'%';"
-mysql -e "FLUSH PRIVILEGES;"
-sed -i "s/^bind-address\s*=.*/bind-address = 0.0.0.0/" /etc/mysql/mysql.conf.d/mysqld.cnf
-sed -i "s/^mysqlx-bind-address\s*=.*/mysqlx-bind-address = 127.0.0.1/" /etc/mysql/mysql.conf.d/mysqld.cnf
-echo "MySQL DB WORDPRESS !!"
+sudo systemctl start mysql
+sudo systemctl enable mysql
+CONFIG_FILE="/etc/mysql/mysql.conf.d/mysqld.cnf"
+sudo sed -i "s/^bind-address\s*=.*/bind-address = 0.0.0.0/" /etc/mysql/mysql.conf.d/mysqld.cnf
+sudo sed -i "s/^mysqlx-bind-address\s*=.*/mysqlx-bind-address = 127.0.0.1/" /etc/mysql/mysql.conf.d/mysqld.cnf
+sudo sed -i "s/^# server-id.*/server-id = 1/" "$CONFIG_FILE"
+sudo sed -i "s|^# log_bin.*|log_bin = /var/log/mysql/mysql-bin.log|" "$CONFIG_FILE"
+
+sudo mysql -e "CREATE USER IF NOT EXISTS 'cowboy_del_infierno'@'%' IDENTIFIED WITH mysql_native_password BY '_Admin123';"
+sudo mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'cowboy_del_infierno'@'%';"
+
+sudo mysql -e "GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'cowboy_del_infierno'@'%';"
+sudo mysql -e "FLUSH PRIVILEGES;"
+sudo mysql -e "FLUSH TABLES WITH READ LOCK;"
+sudo mysql -e "SHOW MASTER STATUS;"
+sudo mysql -e "UNLOCK TABLES;"
+sudo systemctl restart mysql
+echo "MySQL DB XMPP MASTER !!"
 EOF
 )
 
@@ -802,7 +797,36 @@ KEY_NAME="${KEY_NAME}"                  # Name of the SSH Key Pair
 VOLUME_SIZE=8                           # Size of the root EBS volume (in GB)
 USER_DATA_SCRIPT=$(cat <<'EOF'
 #!/bin/bash
-echo "MySQL DB WORDPRESS !!"
+set -e
+
+sudo apt update
+sudo apt install mysql-server mysql-client -y
+sudo systemctl start mysql
+sudo systemctl enable mysql
+CONFIG_FILE="/etc/mysql/mysql.conf.d/mysqld.cnf"
+sudo sed -i "s/^bind-address.*/bind-address = 0.0.0.0/" "$CONFIG_FILE"
+sudo sed -i "s/^# server-id.*/server-id = 2/" "$CONFIG_FILE"
+sudo sed -i "s|^# log_bin.*|log_bin = /var/log/mysql/mysql-bin.log|" "$CONFIG_FILE"
+sudo systemctl restart mysql
+
+echo "Obteniendo información del maestro..."
+MASTER_STATUS=$(mysql -h "10.0.3.10" -u "cowboy_del_infierno" -p"_Admin123" -e "SHOW MASTER STATUS\G" 2>/dev/null)
+BINLOG_FILE=$(echo "$MASTER_STATUS" | grep "File:" | awk '{print $2}')
+BINLOG_POSITION=$(echo "$MASTER_STATUS" | grep "Position:" | awk '{print $2}')
+echo "Archivo binlog: $BINLOG_FILE, Posición: $BINLOG_POSITION"
+mysql -u root <<SQL
+CHANGE MASTER TO
+    MASTER_HOST='10.0.3.10',
+    MASTER_USER='cowboy_del_infierno',
+    MASTER_PASSWORD='_Admin123',
+    MASTER_LOG_FILE='$BINLOG_FILE',
+    MASTER_LOG_POS=$BINLOG_POSITION,
+    MASTER_SSL=0;
+START SLAVE;
+SHOW SLAVE STATUS\G;
+SQL
+
+echo "MySQL DB XMPP SLAVE !!"
 EOF
 )
 
@@ -916,7 +940,19 @@ USER_DATA_SCRIPT=$(cat <<'EOF'
 #!/bin/bash
 set -e
 sudo apt update -y
+sudo apt install mysql-client mysql-server -y
+
+sleep 180
+
+# MySQL credentials
+MYSQL_CMD="sudo mysql -h '10.0.3.10' -u 'cowboy_del_infierno' -p'_Admin123'"
+$MYSQL_CMD <<EOF2
+CREATE DATABASE IF NOT EXISTS xmpp_db;
+EOF2
+
+
 sudo apt install prosody -y
+sudo apt install lua-dbi-mysql lua-dbi-postgresql lua-dbi-sqlite3 -y
 sudo rm -rf /etc/prosody/prosody.cfg.lua
 
 cat <<CONFIG > /etc/prosody/prosody.cfg.lua
@@ -978,7 +1014,11 @@ log = { --disable for extra privacy
         {"lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org", "group chats"};
 }
 admin = { "mario@${DUCKDNS_SUBDOMAIN}.duckdns.org" };
-VirtualHost "${DUCKDNS_SUBDOMAIN}.duckdns.org"
+VirtualHost "supertest1.duckdns.org"
+
+storage = "sql"
+sql = { driver = "MySQL", database = "xmpp_db", username = "cowboy_del_infierno", password = "_Admin123", host = "10.0.3.10" }
+
 ssl = {
     certificate = "certs/${DUCKDNS_SUBDOMAIN}.duckdns.org.crt",
     key = "certs/${DUCKDNS_SUBDOMAIN}.duckdns.org.key",
@@ -1005,6 +1045,7 @@ CONFIG
 
 sudo prosodyctl register mario ${DUCKDNS_SUBDOMAIN}.duckdns.org Admin123
 sudo prosodyctl register carlos ${DUCKDNS_SUBDOMAIN}.duckdns.org Admin123
+sudo prosodyctl register dieguin ${DUCKDNS_SUBDOMAIN}.duckdns.org Admin123
 sudo systemctl restart prosody
 EOF
 )
@@ -1038,7 +1079,19 @@ USER_DATA_SCRIPT=$(cat <<'EOF'
 #!/bin/bash
 set -e
 sudo apt update -y
+sudo apt install mysql-client mysql-server -y
+
+sleep 180
+
+# MySQL credentials
+MYSQL_CMD="sudo mysql -h '10.0.3.10' -u 'cowboy_del_infierno' -p'_Admin123'"
+$MYSQL_CMD <<EOF2
+CREATE DATABASE IF NOT EXISTS xmpp_db;
+EOF2
+
+
 sudo apt install prosody -y
+sudo apt install lua-dbi-mysql lua-dbi-postgresql lua-dbi-sqlite3 -y
 sudo rm -rf /etc/prosody/prosody.cfg.lua
 
 cat <<CONFIG > /etc/prosody/prosody.cfg.lua
@@ -1100,7 +1153,11 @@ log = { --disable for extra privacy
         {"lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org", "group chats"};
 }
 admin = { "mario@${DUCKDNS_SUBDOMAIN}.duckdns.org" };
-VirtualHost "${DUCKDNS_SUBDOMAIN}.duckdns.org"
+VirtualHost "supertest1.duckdns.org"
+
+storage = "sql"
+sql = { driver = "MySQL", database = "xmpp_db", username = "cowboy_del_infierno", password = "_Admin123", host = "10.0.3.10" }
+
 ssl = {
     certificate = "certs/${DUCKDNS_SUBDOMAIN}.duckdns.org.crt",
     key = "certs/${DUCKDNS_SUBDOMAIN}.duckdns.org.key",
@@ -1127,6 +1184,7 @@ CONFIG
 
 sudo prosodyctl register mario ${DUCKDNS_SUBDOMAIN}.duckdns.org Admin123
 sudo prosodyctl register carlos ${DUCKDNS_SUBDOMAIN}.duckdns.org Admin123
+sudo prosodyctl register dieguin ${DUCKDNS_SUBDOMAIN}.duckdns.org Admin123
 sudo systemctl restart prosody
 EOF
 )
