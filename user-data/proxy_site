@@ -1,0 +1,88 @@
+upstream backend_meets {
+    server 10.0.3.100:443;
+    server 10.0.3.200:443;
+#    server 10.0.3.150:443;
+}
+
+upstream backend_xmpp {
+    server 10.0.3.100:12345;
+    server 10.0.3.200:12345;
+}
+server {
+    listen 80;
+    server_name ${DUCKDNS_SUBDOMAIN}.duckdns.org upload.${DUCKDNS_SUBDOMAIN}.duckdns.org;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+
+    location /llamadas {
+        return 301 https://$host$request_uri;
+    }
+
+    location /xmpp {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name ${DUCKDNS_SUBDOMAIN}.duckdns.org;
+
+    ssl_certificate /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org/privkey.pem;
+
+    # Redirect root (/) to /llamadas
+#    location / {
+#        return 301 https://$host/llamadas;
+#    }
+
+    # Strip /llamadas before sending to Jitsi
+    location /llamadas/ {
+#    location / {
+        rewrite ^/llamadas(/.*)\$ \$1 break;
+        proxy_pass https://backend_meets;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Allow Jitsi static files (CSS, JS, images)
+    location /libs/ {
+        proxy_pass https://backend_meets;
+        proxy_set_header Host $host;
+    }
+
+    location /css/ {
+        proxy_pass https://backend_meets;
+        proxy_set_header Host $host;
+    }
+
+    location /static/ {
+        proxy_pass https://backend_meets;
+        proxy_set_header Host $host;
+    }
+
+    location /images/ {
+        proxy_pass https://backend_meets;
+        proxy_set_header Host $host;
+    }
+
+    location /sounds/ {
+        proxy_pass https://backend_meets;
+        proxy_set_header Host $host;
+    }
+
+    location /xmpp {
+        proxy_pass http://backend_xmpp;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
