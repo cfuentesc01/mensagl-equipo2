@@ -17,7 +17,6 @@ read EMAIL
 #printf "%s" "DuckDNS domain2: "
 #read DUCKDNS_SUBDOMAIN2
 
-DUCKDNS_TOKEN="3b14a271-59be-4fcb-adee-5e464299e8ba"
 #DUCKDNS_SUBDOMAIN="mensagl-marioaja"
 DUCKDNS_SUBDOMAIN="supertest1"
 #DUCKDNS_SUBDOMAIN2="mensagl-marioaja"
