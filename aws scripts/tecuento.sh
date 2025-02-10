@@ -10,12 +10,18 @@ printf "%s" "Insert email: "
 read EMAIL
 
 # DuckDNS variables
-printf "%s" "DuckDNS token: "
-read DUCKDNS_TOKEN
-printf "%s" "DuckDNS domain1: "
-read DUCKDNS_SUBDOMAIN
-printf "%s" "DuckDNS domain2: "
-read DUCKDNS_SUBDOMAIN2
+#printf "%s" "DuckDNS token: "
+#read DUCKDNS_TOKEN
+#printf "%s" "DuckDNS domain1: "
+#read DUCKDNS_SUBDOMAIN
+#printf "%s" "DuckDNS domain2: "
+#read DUCKDNS_SUBDOMAIN2
+
+DUCKDNS_TOKEN="3b14a271-59be-4fcb-adee-5e464299e8ba"
+#DUCKDNS_SUBDOMAIN="mensagl-marioaja"
+DUCKDNS_SUBDOMAIN="supertest1"
+#DUCKDNS_SUBDOMAIN2="mensagl-marioaja"
+DUCKDNS_SUBDOMAIN2="supertest2"
 
 
 # Key pair SSH
@@ -23,14 +29,24 @@ KEY_NAME="ssh-mensagl-2025-${ALUMNO}"
 AMI_ID="ami-04b4f1a9cf54c11d0"          # Ubuntu 24.04 AMI ID
 
 
+
+# Variables for RDS
+#RDS_INSTANCE_ID="wordpress-db"
+#printf "%s" "RDS Wordpress Database: "
+#read wDBName
+#printf "%s" "RDS Wordpress Username: "
+#read DB_USERNAME
+#printf "%s" "RDS Wordpress Password: "
+#read DB_PASSWORD
+
+
+
 # Variables for RDS
 RDS_INSTANCE_ID="wordpress-db"
-printf "%s" "RDS Wordpress Database: "
-read wDBName
-printf "%s" "RDS Wordpress Username: "
-read DB_USERNAME
-printf "%s" "RDS Wordpress Password: "
-read DB_PASSWORD
+wDBName="wordpress"
+DB_USERNAME="cowboy_del_infierno"
+DB_PASSWORD="_Admin123"
+
 
 ###########################################################################################################
 ###########################                      V P C                          ###########################
@@ -376,9 +392,7 @@ export host="$host"
 export request_uri="$request_uri"
 
 # Update and install necessary packages
-apt-get update -y
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y curl certbot nginx-full wget python3-pip
-sudo systemctl stop nginx
+sudo apt update && sudo  DEBIAN_FRONTEND=noninteractive apt install nginx-full python3-pip -y
 sudo snap install --classic certbot
 sudo ln -s /snap/bin/certbot /usr/bin/certbot
 pip install certbot-dns-duckdns
@@ -431,6 +445,7 @@ awk -v sub="$DUCKDNS_SUBDOMAIN" '{gsub(/\$\{DUCKDNS_SUBDOMAIN\}/, sub)}1' /etc/n
 ln -s /etc/nginx/sites-available/proxy_site /etc/nginx/sites-enabled/
 rm /etc/nginx/sites-enabled/default
 rm /etc/nginx/sites-available/default
+
 # Add stream block to nginx.conf
 cat <<STREAM_CONF | sudo tee -a /etc/nginx/nginx.conf > /dev/null
 stream {
@@ -1190,7 +1205,17 @@ sudo chown -R ubuntu:ubuntu /var/www/html
 
 sudo -u ubuntu -k -- wp core download --path=/var/www/html
 
-sleep 120
+OUTPUT_FILE="/variables.txt"
+# Save the environment variables
+echo "DUCKDNS_TOKEN=${DUCKDNS_TOKEN}" > "$OUTPUT_FILE"
+echo "DUCKDNS_SUBDOMAIN2=${DUCKDNS_SUBDOMAIN2}" >> "$OUTPUT_FILE"
+echo "EMAIL=${EMAIL}" >> "$OUTPUT_FILE"
+echo "RDS_ENDPOINT=${RDS_ENDPOINT}" >> "$OUTPUT_FILE"
+echo "wDBName=${wDBName}" >> "$OUTPUT_FILE"
+echo "DB_USERNAME=${DB_USERNAME}" >> "$OUTPUT_FILE"
+echo "DB_PASSWORD=${DB_PASSWORD}" >> "$OUTPUT_FILE"
+
+sleep 300
 for i in {1..10}; do
   if mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD} -e "SELECT 1" &>/dev/null; then
     echo "MySQL is available!"
@@ -1273,6 +1298,8 @@ export wDBName=${wDBName}
 export DB_USERNAME=${DB_USERNAME}
 export DB_PASSWORD=${DB_PASSWORD}
 
+
+
 sudo apt update
 sudo apt install apache2 mysql-client mysql-server php php-mysql -y
 curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
@@ -1284,9 +1311,21 @@ sudo chown -R ubuntu:ubuntu /var/www/html
 
 sudo -u ubuntu -k -- wp core download --path=/var/www/html
 
-sleep 120
+
+OUTPUT_FILE="/variables.txt"
+# Save the environment variables
+echo "DUCKDNS_TOKEN=${DUCKDNS_TOKEN}" > "$OUTPUT_FILE"
+echo "DUCKDNS_SUBDOMAIN2=${DUCKDNS_SUBDOMAIN2}" >> "$OUTPUT_FILE"
+echo "EMAIL=${EMAIL}" >> "$OUTPUT_FILE"
+echo "RDS_ENDPOINT=${RDS_ENDPOINT}" >> "$OUTPUT_FILE"
+echo "wDBName=${wDBName}" >> "$OUTPUT_FILE"
+echo "DB_USERNAME=${DB_USERNAME}" >> "$OUTPUT_FILE"
+echo "DB_PASSWORD=${DB_PASSWORD}" >> "$OUTPUT_FILE"
+
+
+sleep 300
 for i in {1..10}; do
-  if mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD} -e "SELECT 1" &>/dev/null; then
+  if sudo mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD} -e "SELECT 1" &>/dev/null; then
     echo "MySQL is available!"
     break
   fi
@@ -1295,10 +1334,10 @@ for i in {1..10}; do
 done
 
 # MySQL commands using -e for individual queries
-mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD} -e "CREATE DATABASE IF NOT EXISTS ${wDBName};"
-mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD} -e "CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'%' IDENTIFIED BY '${DB_PASSWORD}';"
-mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD} -e "GRANT ALL PRIVILEGES ON ${wDBName}.* TO '${DB_USERNAME}'@'%';"
-mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD} -e "FLUSH PRIVILEGES;"
+sudo mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD} -e "CREATE DATABASE IF NOT EXISTS ${wDBName};"
+sudo mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD} -e "CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'%' IDENTIFIED BY '${DB_PASSWORD}';"
+sudo mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD} -e "GRANT ALL PRIVILEGES ON ${wDBName}.* TO '${DB_USERNAME}'@'%';"
+sudo mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD} -e "FLUSH PRIVILEGES;"
 
 sudo -u ubuntu -k -- wp core config --dbname=${wDBName} --dbuser=${DB_USERNAME} --dbpass=${DB_PASSWORD} --dbhost=${RDS_ENDPOINT} --dbprefix=wp_ --path=/var/www/html
 sudo -u ubuntu -k -- wp core install --url=${DUCKDNS_SUBDOMAIN2} --title=MensAGL --admin_user=${DB_USERNAME} --admin_password=${DB_PASSWORD} --admin_email=${EMAIL} --path=/var/www/html
