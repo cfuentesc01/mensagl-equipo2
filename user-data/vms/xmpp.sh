@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-export DUCKDNS_SUBDOMAIN=${DUCKDNS_SUBDOMAIN}
+export DUCKDNS_SUBDOMAIN="${DUCKDNS_SUBDOMAIN}"
 sudo apt update -y
 
 sudo apt install prosody -y
