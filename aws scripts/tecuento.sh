@@ -17,9 +17,11 @@ read DUCKDNS_SUBDOMAIN
 printf "%s" "DuckDNS domain2: "
 read DUCKDNS_SUBDOMAIN2
 
+
 # Key pair SSH
 KEY_NAME="ssh-mensagl-2025-${ALUMNO}"
 AMI_ID="ami-04b4f1a9cf54c11d0"          # Ubuntu 24.04 AMI ID
+
 
 # Variables for RDS
 RDS_INSTANCE_ID="wordpress-db"
@@ -29,7 +31,6 @@ printf "%s" "RDS Wordpress Username: "
 read DB_USERNAME
 printf "%s" "RDS Wordpress Password: "
 read DB_PASSWORD
-
 
 ###########################################################################################################
 ###########################                      V P C                          ###########################
@@ -377,6 +378,7 @@ export request_uri="$request_uri"
 # Update and install necessary packages
 apt-get update -y
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y curl certbot nginx-full wget python3-pip
+sudo systemctl stop nginx
 sudo snap install --classic certbot
 sudo ln -s /snap/bin/certbot /usr/bin/certbot
 pip install certbot-dns-duckdns
@@ -418,13 +420,11 @@ certbot certonly --non-interactive \
  --dns-duckdns-propagation-seconds 180 \
  -d "*.${DUCKDNS_SUBDOMAIN}.duckdns.org"
 
-
 # Install and configure NGINX
 echo "Installing and configuring NGINX..."
 
 wget -O /tmp/proxy_site "https://raw.githubusercontent.com/cfuentesc01/mensagl-equipo2/main/user-data/proxy_site"
-sed -i "s/\${DUCKDNS_SUBDOMAIN}/${DUCKDNS_SUBDOMAIN}/g" /tmp/proxy_site
-mv /tmp/proxy_site /etc/nginx/sites-available/proxy_site
+envsubst '${DUCKDNS_SUBDOMAIN}' < /tmp/proxy_site > /etc/nginx/sites-available/proxy_site
 ln -s /etc/nginx/sites-available/proxy_site /etc/nginx/sites-enabled/
 rm /etc/nginx/sites-enabled/default
 
@@ -524,7 +524,7 @@ stream {
 }
 STREAM_CONF
 
-systemctl restart nginx
+sudo systemctl start nginx
 systemctl enable nginx
 echo "NGINX installed and configured!"
 EOF
@@ -571,6 +571,7 @@ export request_uri="$request_uri"
 # Update and install necessary packages
 apt-get update -y
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y curl certbot nginx-full wget python3-pip
+sudo systemctl stop nginx
 sudo snap install --classic certbot
 sudo ln -s /snap/bin/certbot /usr/bin/certbot
 pip install certbot-dns-duckdns
@@ -608,7 +609,7 @@ mv /tmp/proxy_site /etc/nginx/sites-available/proxy_site
 ln -s /etc/nginx/sites-available/proxy_site /etc/nginx/sites-enabled/
 rm /etc/nginx/sites-enabled/default
 
-systemctl restart nginx
+sudo systemctl start nginx
 systemctl enable nginx
 echo "DDNS installed !"
 EOF
@@ -730,7 +731,7 @@ sudo apt install mysql-server mysql-client -y
 sudo systemctl start mysql
 sudo systemctl enable mysql
 
-sleep 20
+sleep 60
 # MySQL Configuration File
 export CONFIG_FILE="/etc/mysql/mysql.conf.d/mysqld.cnf"
 # Update MySQL Configuration using awk
@@ -975,7 +976,7 @@ ssl = {
 " | sudo tee -a /etc/prosody/prosody.cfg.lua > /dev/null 
 
 sudo apt install mysql-client mysql-server -y
-sleep 180
+sleep 300
 sudo mysql -h '10.0.3.10' -u 'cowboy_del_infierno' -p'_Admin123' -e "CREATE DATABASE IF NOT EXISTS xmpp_db;"
 
 sudo systemctl restart prosody
@@ -1110,7 +1111,7 @@ ssl = {
 " | sudo tee -a /etc/prosody/prosody.cfg.lua > /dev/null 
 
 sudo apt install mysql-client mysql-server -y
-sleep 180
+sleep 300
 sudo mysql -h '10.0.3.10' -u 'cowboy_del_infierno' -p'_Admin123' -e "CREATE DATABASE IF NOT EXISTS xmpp_db;"
 
 sudo systemctl restart prosody
@@ -1183,7 +1184,16 @@ sudo chown -R ubuntu:ubuntu /var/www/html
 
 sudo -u ubuntu -k -- wp core download --path=/var/www/html
 
-sleep 60
+sleep 120
+for i in {1..10}; do
+  if mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD} -e "SELECT 1" &>/dev/null; then
+    echo "MySQL is available!"
+    break
+  fi
+  echo "Waiting for MySQL to be available... Attempt $i"
+  sleep 10
+done
+
 # MySQL commands using -e for individual queries
 mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD} -e "CREATE DATABASE IF NOT EXISTS ${wDBName};"
 mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD} -e "CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'%' IDENTIFIED BY '${DB_PASSWORD}';"
@@ -1196,7 +1206,7 @@ sudo -u ubuntu -k -- wp core install --url=${DUCKDNS_SUBDOMAIN2} --title=MensAGL
 #sudo -u ubuntu -k -- wp option update siteurl 'https://${DUCKDNS_SUBDOMAIN2}' --path=/var/www/html
 sudo -u ubuntu -k -- wp plugin install supportcandy --activate --path=/var/www/html
 
-sudo cp /var/www/html/wp-config-sample.php /var/www/html/wp-config.php
+#sudo cp /var/www/html/wp-config-sample.php /var/www/html/wp-config.php
 cat <<WP_CONFIG >> /var/www/html/wp-config.php
 if(isset(\$_SERVER['HTTP_X_FORWARDED_FOR'])) {
     \$list = explode(',', \$_SERVER['HTTP_X_FORWARDED_FOR']);
@@ -1268,7 +1278,16 @@ sudo chown -R ubuntu:ubuntu /var/www/html
 
 sudo -u ubuntu -k -- wp core download --path=/var/www/html
 
-sleep 60
+sleep 120
+for i in {1..10}; do
+  if mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD} -e "SELECT 1" &>/dev/null; then
+    echo "MySQL is available!"
+    break
+  fi
+  echo "Waiting for MySQL to be available... Attempt $i"
+  sleep 10
+done
+
 # MySQL commands using -e for individual queries
 mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD} -e "CREATE DATABASE IF NOT EXISTS ${wDBName};"
 mysql -h ${RDS_ENDPOINT} -u ${DB_USERNAME} -p${DB_PASSWORD} -e "CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'%' IDENTIFIED BY '${DB_PASSWORD}';"
@@ -1285,7 +1304,7 @@ sudo -u ubuntu -k -- wp plugin install user-registration --activate --path=/var/
 sudo -u ubuntu -k -- wp plugin install wp-mail-smtp --activate --path=/var/www/html
 sudo -u ubuntu -k -- wp plugin install wps-hide-login --activate --path=/var/www/html
 
-sudo cp /var/www/html/wp-config-sample.php /var/www/html/wp-config.php
+#sudo cp /var/www/html/wp-config-sample.php /var/www/html/wp-config.php
 cat <<WP_CONFIG >> /var/www/html/wp-config.php
 if(isset(\$_SERVER['HTTP_X_FORWARDED_FOR'])) {
     \$list = explode(',', \$_SERVER['HTTP_X_FORWARDED_FOR']);
