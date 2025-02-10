@@ -10,16 +10,6 @@ export wDBName="${wDBName}"
 export DB_USERNAME="${DB_USERNAME}"
 export DB_PASSWORD="${DB_PASSWORD}"
 
-# === Store Variables for Debugging ===
-OUTPUT_FILE="/variables.txt"
-echo "DUCKDNS_TOKEN=${DUCKDNS_TOKEN}" > "$OUTPUT_FILE"
-echo "DUCKDNS_SUBDOMAIN2=${DUCKDNS_SUBDOMAIN2}" >> "$OUTPUT_FILE"
-echo "EMAIL=${EMAIL}" >> "$OUTPUT_FILE"
-echo "RDS_ENDPOINT=${RDS_ENDPOINT}" >> "$OUTPUT_FILE"
-echo "wDBName=${wDBName}" >> "$OUTPUT_FILE"
-echo "DB_USERNAME=${DB_USERNAME}" >> "$OUTPUT_FILE"
-echo "DB_PASSWORD=${DB_PASSWORD}" >> "$OUTPUT_FILE"
-
 # === Install Necessary Packages ===
 sudo apt update
 sudo apt install -y apache2 mysql-client mysql-server php php-mysql
@@ -49,14 +39,14 @@ for i in {1..10}; do
 done
 
 # === Configure MySQL Database ===
-sudo mysql -h "$RDS_ENDPOINT" -u "$DB_USERNAME" -p"$DB_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS $wDBName;"
-sudo mysql -h "$RDS_ENDPOINT" -u "$DB_USERNAME" -p"$DB_PASSWORD" -e "CREATE USER IF NOT EXISTS '$DB_USERNAME'@'%' IDENTIFIED BY '$DB_PASSWORD';"
-sudo mysql -h "$RDS_ENDPOINT" -u "$DB_USERNAME" -p"$DB_PASSWORD" -e "GRANT ALL PRIVILEGES ON $wDBName.* TO '$DB_USERNAME'@'%';"
-sudo mysql -h "$RDS_ENDPOINT" -u "$DB_USERNAME" -p"$DB_PASSWORD" -e "FLUSH PRIVILEGES;"
+sudo mysql -h "${RDS_ENDPOINT}" -u "${DB_USERNAME}" -p"${DB_PASSWORD}" -e "CREATE DATABASE IF NOT EXISTS ${wDBName};"
+sudo mysql -h "${RDS_ENDPOINT}" -u "${DB_USERNAME}" -p"${DB_PASSWORD}" -e "CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'%' IDENTIFIED BY '${DB_PASSWORD}';"
+sudo mysql -h "${RDS_ENDPOINT}" -u "${DB_USERNAME}" -p"${DB_PASSWORD}" -e "GRANT ALL PRIVILEGES ON ${wDBName}.* TO '${DB_USERNAME}'@'%';"
+sudo mysql -h "${RDS_ENDPOINT}" -u "${DB_USERNAME}" -p"${DB_PASSWORD}" -e "FLUSH PRIVILEGES;"
 
 # === Configure WordPress ===
-sudo -u ubuntu -k -- wp core config --dbname="$wDBName" --dbuser="$DB_USERNAME" --dbpass="$DB_PASSWORD" --dbhost="$RDS_ENDPOINT" --dbprefix=wp_ --path=/var/www/html
-sudo -u ubuntu -k -- wp core install --url="$DUCKDNS_SUBDOMAIN2" --title="MensAGL" --admin_user="$DB_USERNAME" --admin_password="$DB_PASSWORD" --admin_email="$EMAIL" --path=/var/www/html
+sudo -u ubuntu -k -- wp core config --dbname="${wDBName}" --dbuser="${DB_USERNAME}" --dbpass="${DB_PASSWORD}" --dbhost="${RDS_ENDPOINT}" --dbprefix=wp_ --path=/var/www/html
+sudo -u ubuntu -k -- wp core install --url="${DUCKDNS_SUBDOMAIN2}" --title="MensAGL" --admin_user="${DB_USERNAME}" --admin_password="${DB_PASSWORD}" --admin_email="${EMAIL}" --path=/var/www/html
 
 # === Install WordPress Plugins ===
 PLUGINS=("supportcandy" "updraftplus" "user-registration" "wp-mail-smtp" "wps-hide-login")
@@ -70,9 +60,9 @@ if(isset(\$_SERVER['HTTP_X_FORWARDED_FOR'])) {
     \$list = explode(',', \$_SERVER['HTTP_X_FORWARDED_FOR']);
     \$_SERVER['REMOTE_ADDR'] = \$list[0];
 }
-\$_SERVER['HTTP_HOST'] = '${DUCKDNS_SUBDOMAIN2}';
-\$_SERVER['REMOTE_ADDR'] = '${DUCKDNS_SUBDOMAIN2}';
-\$_SERVER['SERVER_ADDR'] = '${DUCKDNS_SUBDOMAIN2}';
+\$_SERVER['HTTP_HOST'] = '${DUCKDNS_SUBDOMAIN2}.duckdns.org';
+\$_SERVER['REMOTE_ADDR'] = '${DUCKDNS_SUBDOMAIN2}.duckdns.org';
+\$_SERVER['SERVER_ADDR'] = '${DUCKDNS_SUBDOMAIN2}.duckdns.org';
 WP_CONFIG
 
 sed -i "s/\${DUCKDNS_SUBDOMAIN2}/${DUCKDNS_SUBDOMAIN2}/g" /var/www/html/wp-config.php
