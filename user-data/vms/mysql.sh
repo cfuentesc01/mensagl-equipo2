@@ -1,5 +1,10 @@
 #!/bin/bash
 set -e
+
+# === Environment Variables ===
+export DB_USERNAME="${DB_USERNAME}"
+export DB_PASSWORD="${DB_PASSWORD}"
+
 apt-get update -y
 apt-get install mysql-server mysql-client -y
 
@@ -26,9 +31,9 @@ sudo systemctl restart mysql
 sleep 60
 
 # Secure MySQL User Creation
-sudo mysql -e "CREATE USER IF NOT EXISTS 'cowboy_del_infierno'@'%' IDENTIFIED WITH mysql_native_password BY '_Admin123';"
-sudo mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'cowboy_del_infierno'@'%' WITH GRANT OPTION;"
-sudo mysql -e "GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'cowboy_del_infierno'@'%';"
+sudo mysql -e "CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'%' IDENTIFIED WITH mysql_native_password BY '${DB_PASSWORD}';"
+sudo mysql -e "GRANT ALL PRIVILEGES ON *.* TO '${DB_USERNAME}'@'%' WITH GRANT OPTION;"
+sudo mysql -e "GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '${DB_USERNAME}'@'%';"
 sudo mysql -e "FLUSH PRIVILEGES;"
 
 # Verify the user was created
