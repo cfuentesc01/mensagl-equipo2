@@ -604,8 +604,7 @@ certbot certonly --standalone \
   -d "${DUCKDNS_SUBDOMAIN}.duckdns.org"
 
 wget -O /tmp/proxy_site "https://raw.githubusercontent.com/cfuentesc01/mensagl-equipo2/main/user-data/proxy_site2"
-sed -i "s/\${DUCKDNS_SUBDOMAIN2}/${DUCKDNS_SUBDOMAIN2}/g" /tmp/proxy_site
-mv /tmp/proxy_site /etc/nginx/sites-available/proxy_site
+envsubst '${DUCKDNS_SUBDOMAIN2}' < /tmp/proxy_site > /etc/nginx/sites-available/proxy_site
 ln -s /etc/nginx/sites-available/proxy_site /etc/nginx/sites-enabled/
 rm /etc/nginx/sites-enabled/default
 
