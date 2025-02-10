@@ -424,10 +424,13 @@ certbot certonly --non-interactive \
 echo "Installing and configuring NGINX..."
 
 wget -O /tmp/proxy_site "https://raw.githubusercontent.com/cfuentesc01/mensagl-equipo2/main/user-data/proxy_site"
+envsubst '${DUCKDNS_SUBDOMAIN}' < /tmp/proxy_site > /etc/nginx/sites-available/proxy_site
 envsubst '$DUCKDNS_SUBDOMAIN' < /tmp/proxy_site > /etc/nginx/sites-available/proxy_site
+sed "s|\${DUCKDNS_SUBDOMAIN}|${DUCKDNS_SUBDOMAIN}|g" /etc/nginx/sites-available/proxy_site
+awk -v sub="$DUCKDNS_SUBDOMAIN" '{gsub(/\$\{DUCKDNS_SUBDOMAIN\}/, sub)}1' /etc/nginx/sites-available/proxy_site
 ln -s /etc/nginx/sites-available/proxy_site /etc/nginx/sites-enabled/
 rm /etc/nginx/sites-enabled/default
-
+rm /etc/nginx/sites-available/default
 # Add stream block to nginx.conf
 cat <<STREAM_CONF | sudo tee -a /etc/nginx/nginx.conf > /dev/null
 stream {
@@ -605,8 +608,12 @@ certbot certonly --standalone \
 
 wget -O /tmp/proxy_site "https://raw.githubusercontent.com/cfuentesc01/mensagl-equipo2/main/user-data/proxy_site2"
 envsubst '${DUCKDNS_SUBDOMAIN2}' < /tmp/proxy_site > /etc/nginx/sites-available/proxy_site
+envsubst '$DUCKDNS_SUBDOMAIN2' < /tmp/proxy_site > /etc/nginx/sites-available/proxy_site
+sed "s|\${DUCKDNS_SUBDOMAIN2}|${DUCKDNS_SUBDOMAIN2}|g" /etc/nginx/sites-available/proxy_site
+awk -v sub="$DUCKDNS_SUBDOMAIN2" '{gsub(/\$\{DUCKDNS_SUBDOMAIN2\}/, sub)}1' /etc/nginx/sites-available/proxy_site
 ln -s /etc/nginx/sites-available/proxy_site /etc/nginx/sites-enabled/
 rm /etc/nginx/sites-enabled/default
+rm /etc/nginx/sites-available/default
 
 sudo systemctl start nginx
 systemctl enable nginx
