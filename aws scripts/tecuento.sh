@@ -369,7 +369,7 @@ INSTANCE_TYPE="t2.micro"                # EC2 Instance Type
 KEY_NAME="${KEY_NAME}"                  # Name of the SSH Key Pair
 VOLUME_SIZE=8                           # Size of the root EBS volume (in GB)
 
-USER_DATA_SCRIPT=$(cat <<EOF
+USER_DATA_SCRIPT=$(cat <<'EOF'
 #!/bin/bash
 
 export DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
@@ -564,7 +564,7 @@ INSTANCE_TYPE="t2.micro"                # EC2 Instance Type
 KEY_NAME="${KEY_NAME}"                  # Name of the SSH Key Pair
 VOLUME_SIZE=8                           # Size of the root EBS volume (in GB)
 
-USER_DATA_SCRIPT=$(cat <<EOF
+USER_DATA_SCRIPT=$(cat <<'EOF'
 #!/bin/bash
 
 export DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
@@ -730,7 +730,7 @@ PRIVATE_IP="10.0.3.20"                  # Private IP for the instance
 INSTANCE_TYPE="t2.micro"                # EC2 Instance Type
 KEY_NAME="${KEY_NAME}"                  # Name of the SSH Key Pair
 VOLUME_SIZE=8                           # Size of the root EBS volume (in GB)
-USER_DATA_SCRIPT=$(cat <<EOF
+USER_DATA_SCRIPT=$(cat <<'EOF'
 #!/bin/bash
 set -e
 
@@ -1088,7 +1088,7 @@ log = { --disable for extra privacy
         {'upload.${DUCKDNS_SUBDOMAIN}.duckdns.org', 'file uploads'};
         {'lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org', 'group chats'};
 }
-admin = { 'mario@\\${DUCKDNS_SUBDOMAIN}.duckdns.org' };
+admin = { 'mario@${DUCKDNS_SUBDOMAIN}.duckdns.org' };
 VirtualHost '${DUCKDNS_SUBDOMAIN}.duckdns.org'
 
 storage = 'sql'
@@ -1170,7 +1170,7 @@ PRIVATE_IP="10.0.4.100"                     # Private IP for the instance
 INSTANCE_TYPE="t2.micro"                    # EC2 Instance Type
 KEY_NAME="${KEY_NAME}"                      # Name of the SSH Key Pair
 VOLUME_SIZE=8                               # Size of the root EBS volume (in GB)
-USER_DATA_SCRIPT=$(cat <<'EOF'
+USER_DATA_SCRIPT=$(cat <<EOF
 #!/bin/bash
 set -e
 export DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
@@ -1274,7 +1274,7 @@ PRIVATE_IP="10.0.4.200"                     # Private IP for the instance
 INSTANCE_TYPE="t2.micro"                    # EC2 Instance Type
 KEY_NAME="${KEY_NAME}"                      # Name of the SSH Key Pair
 VOLUME_SIZE=8                               # Size of the root EBS volume (in GB)
-USER_DATA_SCRIPT=$(cat <<'EOF'
+USER_DATA_SCRIPT=$(cat <<EOF
 #!/bin/bash
 set -e
 export DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
