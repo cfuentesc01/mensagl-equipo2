@@ -1,10 +1,10 @@
 #!/bin/bash
 
-export DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
-export DUCKDNS_SUBDOMAIN=${DUCKDNS_SUBDOMAIN}
-export EMAIL=${EMAIL}
-export host="$host"
-export request_uri="$request_uri"
+export DUCKDNS_TOKEN="${DUCKDNS_TOKEN}"
+export DUCKDNS_SUBDOMAIN="${DUCKDNS_SUBDOMAIN}"
+export EMAIL="${EMAIL}"
+export host="${host}"
+export request_uri="${request_uri}"
 
 # Update and install necessary packages
 sudo apt update && sudo  DEBIAN_FRONTEND=noninteractive apt install nginx-full python3-pip -y
@@ -37,26 +37,111 @@ echo "Obtaining SSL certificate using certbot..."
 certbot certonly --standalone \
   --non-interactive \
   --agree-tos \
-  --email $EMAIL \
+  --email "${EMAIL}" \
   -d "${DUCKDNS_SUBDOMAIN}.duckdns.org"
 
 certbot certonly --non-interactive \
  --agree-tos \
- --email $EMAIL \
+ --email "${EMAIL}" \
  --preferred-challenges dns \
  --authenticator dns-duckdns \
- --dns-duckdns-token ${DUCKDNS_TOKEN} \
+ --dns-duckdns-token "${DUCKDNS_TOKEN}" \
  --dns-duckdns-propagation-seconds 180 \
  -d "*.${DUCKDNS_SUBDOMAIN}.duckdns.org"
 
 # Install and configure NGINX
 echo "Installing and configuring NGINX..."
 
-wget -O /tmp/proxy_site "https://raw.githubusercontent.com/cfuentesc01/mensagl-equipo2/main/user-data/proxy_site"
-envsubst '${DUCKDNS_SUBDOMAIN}' < /tmp/proxy_site > /etc/nginx/sites-available/proxy_site
-envsubst '$DUCKDNS_SUBDOMAIN' < /tmp/proxy_site > /etc/nginx/sites-available/proxy_site
-sed "s|\${DUCKDNS_SUBDOMAIN}|${DUCKDNS_SUBDOMAIN}|g" /etc/nginx/sites-available/proxy_site
-awk -v sub="$DUCKDNS_SUBDOMAIN" '{gsub(/\$\{DUCKDNS_SUBDOMAIN\}/, sub)}1' /etc/nginx/sites-available/proxy_site
+cat <<EOF > /etc/nginx/sites-available/proxy_site
+upstream backend_meets {
+    server 10.0.3.100:443;
+    server 10.0.3.200:443;
+#    server 10.0.3.150:443;
+}
+
+upstream backend_xmpp {
+    server 10.0.3.100:12345;
+    server 10.0.3.200:12345;
+}
+server {
+    listen 80;
+    server_name ${DUCKDNS_SUBDOMAIN}.duckdns.org upload.${DUCKDNS_SUBDOMAIN}.duckdns.org;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+
+    location /llamadas {
+        return 301 https://\$host\$request_uri;
+    }
+
+    location /xmpp {
+        return 301 https://\$host\$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name ${DUCKDNS_SUBDOMAIN}.duckdns.org;
+
+    ssl_certificate /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org/privkey.pem;
+
+    # Redirect root (/) to /llamadas
+#    location / {
+#        return 301 https://\$host/llamadas;
+#    }
+
+    # Strip /llamadas before sending to Jitsi
+    location /llamadas/ {
+#    location / {
+        rewrite ^/llamadas(/.*)\$ \$1 break;
+        proxy_pass https://backend_meets;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    # Allow Jitsi static files (CSS, JS, images)
+    location /libs/ {
+        proxy_pass https://backend_meets;
+        proxy_set_header Host \$host;
+    }
+
+    location /css/ {
+        proxy_pass https://backend_meets;
+        proxy_set_header Host \$host;
+    }
+
+    location /static/ {
+        proxy_pass https://backend_meets;
+        proxy_set_header Host \$host;
+    }
+
+    location /images/ {
+        proxy_pass https://backend_meets;
+        proxy_set_header Host \$host;
+    }
+
+    location /sounds/ {
+        proxy_pass https://backend_meets;
+        proxy_set_header Host \$host;
+    }
+
+    location /xmpp {
+        proxy_pass http://backend_xmpp;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
 ln -s /etc/nginx/sites-available/proxy_site /etc/nginx/sites-enabled/
 rm /etc/nginx/sites-enabled/default
 rm /etc/nginx/sites-available/default
