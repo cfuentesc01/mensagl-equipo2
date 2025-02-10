@@ -603,39 +603,8 @@ certbot certonly --standalone \
   --email $EMAIL \
   -d "${DUCKDNS_SUBDOMAIN}.duckdns.org"
 
-#wget -O /tmp/proxy_site "https://raw.githubusercontent.com/cfuentesc01/mensagl-equipo2/main/user-data/proxy_site2"
-#envsubst '${DUCKDNS_SUBDOMAIN2}' < /tmp/proxy_site > /etc/nginx/sites-available/proxy_site
-cat <<CONFIG > /etc/nginx/sites-available/proxy_site
-upstream backend_servers {
-    server 10.0.4.100:443;
-    server 10.0.4.200:443;
-}
-
-server {
-    listen 80;
-    server_name $DUCKDNS_SUBDOMAIN2.duckdns.org;
-    return 301 https://\$host\$request_uri;  # Redirect HTTP to HTTPS
-}
-
-server {
-    listen 443 ssl;
-    server_name $DUCKDNS_SUBDOMAIN2.duckdns.org;
-
-    ssl_certificate /etc/letsencrypt/live/$DUCKDNS_SUBDOMAIN2.duckdns.org/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$DUCKDNS_SUBDOMAIN2.duckdns.org/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-
-    location / {
-        proxy_pass https://backend_servers;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
-}
-
-CONFIG
+wget -O /tmp/proxy_site "https://raw.githubusercontent.com/cfuentesc01/mensagl-equipo2/main/user-data/proxy_site2"
+envsubst '${DUCKDNS_SUBDOMAIN2}' < /tmp/proxy_site > /etc/nginx/sites-available/proxy_site
 ln -s /etc/nginx/sites-available/proxy_site /etc/nginx/sites-enabled/
 rm /etc/nginx/sites-enabled/default
 
