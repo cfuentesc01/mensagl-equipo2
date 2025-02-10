@@ -1,10 +1,8 @@
 #!/bin/bash
 
-export DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
-export DUCKDNS_SUBDOMAIN2=${DUCKDNS_SUBDOMAIN2}
-export EMAIL=${EMAIL}
-export host="$host"
-export request_uri="$request_uri"
+export DUCKDNS_TOKEN="${DUCKDNS_TOKEN}"
+export DUCKDNS_SUBDOMAIN2="${DUCKDNS_SUBDOMAIN2}"
+export EMAIL="${EMAIL}"
 
 # Update and install necessary packages
 apt-get update -y
@@ -38,14 +36,39 @@ echo "Obtaining SSL certificate using certbot..."
 certbot certonly --standalone \
   --non-interactive \
   --agree-tos \
-  --email $EMAIL \
+  --email "${EMAIL}" \
   -d "${DUCKDNS_SUBDOMAIN}.duckdns.org"
 
-wget -O /tmp/proxy_site "https://raw.githubusercontent.com/cfuentesc01/mensagl-equipo2/main/user-data/proxy_site2"
-envsubst '${DUCKDNS_SUBDOMAIN2}' < /tmp/proxy_site > /etc/nginx/sites-available/proxy_site
-envsubst '$DUCKDNS_SUBDOMAIN2' < /tmp/proxy_site > /etc/nginx/sites-available/proxy_site
-sed "s|\${DUCKDNS_SUBDOMAIN2}|${DUCKDNS_SUBDOMAIN2}|g" /etc/nginx/sites-available/proxy_site
-awk -v sub="$DUCKDNS_SUBDOMAIN2" '{gsub(/\$\{DUCKDNS_SUBDOMAIN2\}/, sub)}1' /etc/nginx/sites-available/proxy_site
+cat <<EOF > /etc/nginx/sites-available/proxy_site
+upstream backend_servers {
+    server 10.0.4.100:443;
+    server 10.0.4.200:443;
+}
+
+server {
+    listen 80;
+    server_name ${DUCKDNS_SUBDOMAIN2}.duckdns.org;
+    return 301 https://\$host\$request_uri;  # Redirect HTTP to HTTPS
+}
+
+server {
+    listen 443 ssl;
+    server_name ${DUCKDNS_SUBDOMAIN2}.duckdns.org;
+
+    ssl_certificate /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN2}.duckdns.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN2}.duckdns.org/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    location / {
+        proxy_pass https://backend_servers;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
 ln -s /etc/nginx/sites-available/proxy_site /etc/nginx/sites-enabled/
 rm /etc/nginx/sites-enabled/default
 rm /etc/nginx/sites-available/default
