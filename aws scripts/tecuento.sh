@@ -10,18 +10,12 @@ printf "%s" "Insert email: "
 read EMAIL
 
 # DuckDNS variables
-#printf "%s" "DuckDNS token: "
-#read DUCKDNS_TOKEN
-#printf "%s" "DuckDNS domain1: "
-#read DUCKDNS_SUBDOMAIN
-#printf "%s" "DuckDNS domain2: "
-#read DUCKDNS_SUBDOMAIN2
-
-DUCKDNS_TOKEN="3b14a271-59be-4fcb-adee-5e464299e8ba"
-#DUCKDNS_SUBDOMAIN="mensagl-marioaja"
-DUCKDNS_SUBDOMAIN="supertest1"
-#DUCKDNS_SUBDOMAIN2="mensagl-marioaja"
-DUCKDNS_SUBDOMAIN2="supertest2"
+printf "%s" "DuckDNS token: "
+read DUCKDNS_TOKEN
+printf "%s" "DuckDNS domain1: "
+read DUCKDNS_SUBDOMAIN
+printf "%s" "DuckDNS domain2: "
+read DUCKDNS_SUBDOMAIN2
 
 
 # Key pair SSH
@@ -31,21 +25,14 @@ AMI_ID="ami-04b4f1a9cf54c11d0"          # Ubuntu 24.04 AMI ID
 
 
 # Variables for RDS
-#RDS_INSTANCE_ID="wordpress-db"
-#printf "%s" "RDS Wordpress Database: "
-#read wDBName
-#printf "%s" "RDS Wordpress Username: "
-#read DB_USERNAME
-#printf "%s" "RDS Wordpress Password: "
-#read DB_PASSWORD
-
-
-
-# Variables for RDS
 RDS_INSTANCE_ID="wordpress-db"
-wDBName="wordpress"
-DB_USERNAME="cowboy_del_infierno"
-DB_PASSWORD="_Admin123"
+printf "%s" "RDS Wordpress Database: "
+read wDBName
+printf "%s" "RDS Wordpress Username: "
+read DB_USERNAME
+printf "%s" "RDS Wordpress Password: "
+read DB_PASSWORD
+
 
 
 ###########################################################################################################
