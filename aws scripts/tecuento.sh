@@ -424,7 +424,7 @@ certbot certonly --non-interactive \
 echo "Installing and configuring NGINX..."
 
 wget -O /tmp/proxy_site "https://raw.githubusercontent.com/cfuentesc01/mensagl-equipo2/main/user-data/proxy_site"
-envsubst '${DUCKDNS_SUBDOMAIN}' < /tmp/proxy_site > /etc/nginx/sites-available/proxy_site
+envsubst '$DUCKDNS_SUBDOMAIN' < /tmp/proxy_site > /etc/nginx/sites-available/proxy_site
 ln -s /etc/nginx/sites-available/proxy_site /etc/nginx/sites-enabled/
 rm /etc/nginx/sites-enabled/default
 
