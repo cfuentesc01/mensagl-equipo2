@@ -415,7 +415,7 @@ certbot certonly --non-interactive \
  --preferred-challenges dns \
  --authenticator dns-duckdns \
  --dns-duckdns-token ${DUCKDNS_TOKEN} \
- --dns-duckdns-propagation-seconds 60 \
+ --dns-duckdns-propagation-seconds 180 \
  -d "*.${DUCKDNS_SUBDOMAIN}.duckdns.org"
 
 
