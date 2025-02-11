@@ -7,8 +7,6 @@ export DB_PASSWORD="${DB_PASSWORD}"
 
 apt-get update -y
 apt-get install mysql-server mysql-client -y
-
-# Start and enable MySQL
 sudo systemctl start mysql
 sudo systemctl enable mysql
 
@@ -28,7 +26,7 @@ echo "Updated MySQL Config:"
 cat "$CONFIG_FILE"
 
 sudo systemctl restart mysql
-sleep 60
+sleep 20
 
 # Secure MySQL User Creation
 sudo mysql -e "CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'%' IDENTIFIED WITH mysql_native_password BY '${DB_PASSWORD}';"
