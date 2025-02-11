@@ -17,11 +17,9 @@ read DUCKDNS_SUBDOMAIN
 printf "%s" "DuckDNS domain2: "
 read DUCKDNS_SUBDOMAIN2
 
-
 # Key pair SSH
 KEY_NAME="ssh-mensagl-2025-${ALUMNO}"
 AMI_ID="ami-04b4f1a9cf54c11d0"          # Ubuntu 24.04 AMI ID
-
 
 # Variables for RDS
 RDS_INSTANCE_ID="wordpress-db"
@@ -350,9 +348,80 @@ aws ec2 create-key-pair \
 
 echo "SSH KEYS !";
 
+
+#aws rds delete-db-instance \
+#    --db-instance-identifier "wordpress-db" \
+#    --skip-final-snapshot \
+#    --region "us-east-1"
+#aws rds describe-db-instances --db-instance-identifier "wordpress-db"
+#aws rds delete-db-subnet-group --db-subnet-group-name wp-rds-subnet-group
+#aws rds describe-db-subnet-groups --db-subnet-group-name wp-rds-subnet-group
+
+
+
+
+########################################################################
+###################### ADD RDS MYSQL INSTANCE BELOW ####################
+########################################################################
+
+
+# Create RDS Subnet Group (Requires at Least 2 AZs)
+aws rds create-db-subnet-group \
+    --db-subnet-group-name wp-rds-subnet-group \
+    --db-subnet-group-description "RDS Subnet Group for WordPress" \
+    --subnet-ids "$SUBNET_PRIVATE1" "$SUBNET_PRIVATE2"
+
+# Create Security Group for RDS
+SG_ID_RDS=$(aws ec2 create-security-group \
+  --group-name "RDS-MySQL" \
+  --description "Security group for RDS MySQL" \
+  --vpc-id "$VPC_ID" \
+  --query 'GroupId' \
+  --output text)
+
+# Allow MySQL access (replace with actual security group or IP CIDR)
+aws ec2 authorize-security-group-ingress \
+  --group-id "$SG_ID_RDS" \
+  --protocol tcp \
+  --port 3306 \
+  --cidr 0.0.0.0/0  # Replace with actual WordPress server CIDR
+
+# Create RDS Instance (Single-AZ in Private Subnet 2)
+aws rds create-db-instance \
+    --db-instance-identifier "$RDS_INSTANCE_ID" \
+    --db-instance-class db.t3.micro \
+    --engine mysql \
+    --allocated-storage 20 \
+    --storage-type gp2 \
+    --master-username "$DB_USERNAME" \
+    --master-user-password "$DB_PASSWORD" \
+    --db-subnet-group-name wp-rds-subnet-group \
+    --vpc-security-group-ids "$SG_ID_RDS" \
+    --backup-retention-period 7 \
+    --no-publicly-accessible \
+    --region "$REGION" \
+    --availability-zone "$AVAILABILITY_ZONE1" \
+    --no-multi-az  # Ensures Single-AZ deployment
+
+# Wait for RDS to be available
+echo "Waiting for RDS to become available (may take ~10 minutes)..."
+aws rds wait db-instance-available --db-instance-identifier "$RDS_INSTANCE_ID"
+
+# Retrieve RDS endpoint
+RDS_ENDPOINT=$(aws rds describe-db-instances \
+    --db-instance-identifier "$RDS_INSTANCE_ID" \
+    --query 'DBInstances[0].Endpoint.Address' \
+    --output text)
+echo "RDS Endpoint: $RDS_ENDPOINT"
+
+
+
+
+
 ###########################################################################################################
 ###########################                      E C 2                          ###########################
 ###########################################################################################################
+
 
 SRC_DIR="./user-data/vms"
 DEST_DIR="./user-data/result"
@@ -367,12 +436,14 @@ find "$DEST_DIR" -type f -name "*.sh" -exec sed -i \
     -e "s|\${ALUMNO}|${ALUMNO}|g" \
     -e "s|\${EMAIL}|${EMAIL}|g" \
     -e "s|\${RDS_INSTANCE_ID}|${RDS_INSTANCE_ID}|g" \
+    -e "s|\${$RDS_ENDPOINT}|${$RDS_ENDPOINT}|g" \
     -e "s|\${wDBName}|${wDBName}|g" \
     -e "s|\${DB_USERNAME}|${DB_USERNAME}|g" \
     -e "s|\${DB_PASSWORD}|${DB_PASSWORD}|g" {} +
 
 chmod +x "$DEST_DIR"/*.sh;
 echo "SCRIPTS MODIFIED";
+
 
 
 
@@ -496,83 +567,6 @@ INSTANCE_ID=$(aws ec2 run-instances \
     --query "Instances[0].InstanceId" \
     --output text)
 echo "${INSTANCE_NAME} created"
-
-
-
-
-
-
-
-#aws rds delete-db-instance \
-#    --db-instance-identifier "wordpress-db" \
-#    --skip-final-snapshot \
-#    --region "us-east-1"
-#aws rds describe-db-instances --db-instance-identifier "wordpress-db"
-#aws rds delete-db-subnet-group --db-subnet-group-name wp-rds-subnet-group
-#aws rds describe-db-subnet-groups --db-subnet-group-name wp-rds-subnet-group
-
-
-
-
-########################################################################
-###################### ADD RDS MYSQL INSTANCE BELOW ####################
-########################################################################
-
-
-# Create RDS Subnet Group (Requires at Least 2 AZs)
-aws rds create-db-subnet-group \
-    --db-subnet-group-name wp-rds-subnet-group \
-    --db-subnet-group-description "RDS Subnet Group for WordPress" \
-    --subnet-ids "$SUBNET_PRIVATE1" "$SUBNET_PRIVATE2"
-
-# Create Security Group for RDS
-SG_ID_RDS=$(aws ec2 create-security-group \
-  --group-name "RDS-MySQL" \
-  --description "Security group for RDS MySQL" \
-  --vpc-id "$VPC_ID" \
-  --query 'GroupId' \
-  --output text)
-
-# Allow MySQL access (replace with actual security group or IP CIDR)
-aws ec2 authorize-security-group-ingress \
-  --group-id "$SG_ID_RDS" \
-  --protocol tcp \
-  --port 3306 \
-  --cidr 0.0.0.0/0  # Replace with actual WordPress server CIDR
-
-# Create RDS Instance (Single-AZ in Private Subnet 2)
-aws rds create-db-instance \
-    --db-instance-identifier "$RDS_INSTANCE_ID" \
-    --db-instance-class db.t3.micro \
-    --engine mysql \
-    --allocated-storage 20 \
-    --storage-type gp2 \
-    --master-username "$DB_USERNAME" \
-    --master-user-password "$DB_PASSWORD" \
-    --db-subnet-group-name wp-rds-subnet-group \
-    --vpc-security-group-ids "$SG_ID_RDS" \
-    --backup-retention-period 7 \
-    --no-publicly-accessible \
-    --region "$REGION" \
-    --availability-zone "$AVAILABILITY_ZONE1" \
-    --no-multi-az  # Ensures Single-AZ deployment
-
-# Wait for RDS to be available
-echo "Waiting for RDS to become available (may take ~10 minutes)..."
-aws rds wait db-instance-available --db-instance-identifier "$RDS_INSTANCE_ID"
-
-# Retrieve RDS endpoint
-RDS_ENDPOINT=$(aws rds describe-db-instances \
-    --db-instance-identifier "$RDS_INSTANCE_ID" \
-    --query 'DBInstances[0].Endpoint.Address' \
-    --output text)
-echo "RDS Endpoint: $RDS_ENDPOINT"
-
-
-
-
-
-
 
 
 
