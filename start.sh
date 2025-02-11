@@ -590,7 +590,6 @@ PRIVATE_IP="10.0.3.100"                # Private IP for the instance
 INSTANCE_TYPE="t2.micro"                # EC2 Instance Type
 KEY_NAME="${KEY_NAME}"                  # Name of the SSH Key Pair
 VOLUME_SIZE=8                           # Size of the root EBS volume (in GB)
-USER_DATA_SCRIPT=$(cat <<EOF
 
 
 # ====== Create EC2 Instance ======
