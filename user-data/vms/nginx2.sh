@@ -42,6 +42,16 @@ certbot certonly --non-interactive \
  --dns-duckdns-propagation-seconds 60 \
  -d "${DUCKDNS_SUBDOMAIN2}.duckdns.org"
 
+certbot certonly --non-interactive \
+ --agree-tos \
+ --email "${EMAIL}" \
+ --preferred-challenges dns \
+ --authenticator dns-duckdns \
+ --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+ --dns-duckdns-propagation-seconds 120 \
+ -d "${DUCKDNS_SUBDOMAIN2}.duckdns.org"
+
+
 cat <<EOF > /etc/nginx/sites-available/proxy_site
 upstream backend_servers {
     server 10.0.4.100:443;
