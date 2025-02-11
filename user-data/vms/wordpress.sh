@@ -35,7 +35,7 @@ for i in {1..10}; do
     break
   fi
   echo "Waiting for MySQL to be available... Attempt $i"
-  sleep 10
+  sleep 100
 done
 
 # === Configure MySQL Database ===
