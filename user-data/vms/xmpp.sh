@@ -96,11 +96,10 @@ ssl = {
 " | sudo tee -a /etc/prosody/prosody.cfg.lua > /dev/null 
 
 sudo apt install mysql-client mysql-server -y
-sleep 300
+sleep 240
 sudo mysql -h '${DUCKDNS_SUBDOMAIN}' -u 'cowboy_del_infierno' -p'_Admin123' -e "CREATE DATABASE IF NOT EXISTS xmpp_db;"
 
 sudo systemctl restart prosody
-
 sudo prosodyctl register mario ${DUCKDNS_SUBDOMAIN}.duckdns.org Admin123
 sudo prosodyctl register carlos ${DUCKDNS_SUBDOMAIN}.duckdns.org Admin123
 sudo prosodyctl register dieguin ${DUCKDNS_SUBDOMAIN}.duckdns.org Admin123
