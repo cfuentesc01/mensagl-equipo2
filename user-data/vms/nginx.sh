@@ -41,24 +41,7 @@ certbot certonly --non-interactive \
  --authenticator dns-duckdns \
  --dns-duckdns-token "${DUCKDNS_TOKEN}" \
  --dns-duckdns-propagation-seconds 60 \
- -d "${DUCKDNS_SUBDOMAIN}.duckdns.org"
-
-certbot certonly --non-interactive \
- --agree-tos \
- --email "${EMAIL}" \
- --preferred-challenges dns \
- --authenticator dns-duckdns \
- --dns-duckdns-token "${DUCKDNS_TOKEN}" \
- --dns-duckdns-propagation-seconds 120 \
- -d "${DUCKDNS_SUBDOMAIN}.duckdns.org"
-
-certbot certonly --non-interactive \
- --agree-tos \
- --email "${EMAIL}" \
- --preferred-challenges dns \
- --authenticator dns-duckdns \
- --dns-duckdns-token "${DUCKDNS_TOKEN}" \
- --dns-duckdns-propagation-seconds 60 \
+ -d "${DUCKDNS_SUBDOMAIN}.duckdns.org" \
  -d "*.${DUCKDNS_SUBDOMAIN}.duckdns.org"
 
 certbot certonly --non-interactive \
@@ -68,8 +51,8 @@ certbot certonly --non-interactive \
  --authenticator dns-duckdns \
  --dns-duckdns-token "${DUCKDNS_TOKEN}" \
  --dns-duckdns-propagation-seconds 120 \
+ -d "${DUCKDNS_SUBDOMAIN}.duckdns.org" \
  -d "*.${DUCKDNS_SUBDOMAIN}.duckdns.org"
-
 
 
 
