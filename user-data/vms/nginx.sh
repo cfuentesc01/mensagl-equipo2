@@ -31,28 +31,56 @@ chmod +x /opt/duckdns/duckdns.sh
 echo "Updating DuckDNS IP..."
 /opt/duckdns/duckdns.sh
 
-sleep 30
-# Obtain SSL certificate in standalone mode (non-interactive)
-echo "Obtaining SSL certificate using certbot..."
-certbot certonly --non-interactive \
- --agree-tos \
- --email "${EMAIL}" \
- --preferred-challenges dns \
- --authenticator dns-duckdns \
- --dns-duckdns-token "${DUCKDNS_TOKEN}" \
- --dns-duckdns-propagation-seconds 60 \
- -d "${DUCKDNS_SUBDOMAIN}.duckdns.org" \
- -d "*.${DUCKDNS_SUBDOMAIN}.duckdns.org"
+sleep 10
 
-certbot certonly --non-interactive \
- --agree-tos \
- --email "${EMAIL}" \
- --preferred-challenges dns \
- --authenticator dns-duckdns \
- --dns-duckdns-token "${DUCKDNS_TOKEN}" \
- --dns-duckdns-propagation-seconds 120 \
- -d "${DUCKDNS_SUBDOMAIN}.duckdns.org" \
- -d "*.${DUCKDNS_SUBDOMAIN}.duckdns.org"
+
+CERT_PATH="/etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org/fullchain.pem"
+# Check if the domain certificate already exists
+if [ ! -f "$CERT_PATH" ]; then
+    echo "Obtaining SSL certificate for ${DUCKDNS_SUBDOMAIN}.duckdns.org..."
+    certbot certonly --non-interactive \
+        --agree-tos \
+        --email "${EMAIL}" \
+        --preferred-challenges dns \
+        --authenticator dns-duckdns \
+        --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+        --dns-duckdns-propagation-seconds 120 \
+        -d "${DUCKDNS_SUBDOMAIN}.duckdns.org"
+
+    # Verify if the certificate was successfully created
+    if [ -f "$CERT_PATH" ]; then
+        echo "Domain certificate created successfully."
+    else
+        echo "Failed to create domain certificate. Exiting..."
+        exit 1
+    fi
+else
+    echo "Domain certificate already exists."
+fi
+
+# Now request the wildcard certificate
+WILDCARD_CERT_PATH="/etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org/fullchain.pem"
+if [ ! -f "$WILDCARD_CERT_PATH" ]; then
+    echo "Obtaining wildcard SSL certificate for *.${DUCKDNS_SUBDOMAIN}.duckdns.org..."
+    certbot certonly --non-interactive \
+        --agree-tos \
+        --email "${EMAIL}" \
+        --preferred-challenges dns \
+        --authenticator dns-duckdns \
+        --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+        --dns-duckdns-propagation-seconds 120 \
+        -d "*.${DUCKDNS_SUBDOMAIN}.duckdns.org"
+
+    # Verify if the wildcard certificate was successfully created
+    if [ -f "$WILDCARD_CERT_PATH" ]; then
+        echo "Wildcard certificate created successfully."
+    else
+        echo "Failed to create wildcard certificate. Exiting..."
+        exit 1
+    fi
+else
+    echo "Wildcard certificate already exists."
+fi
 
 
 
@@ -70,6 +98,7 @@ upstream backend_xmpp {
     server 10.0.3.100:12345;
     server 10.0.3.200:12345;
 }
+
 server {
     listen 80;
     server_name ${DUCKDNS_SUBDOMAIN}.duckdns.org upload.${DUCKDNS_SUBDOMAIN}.duckdns.org;
@@ -194,6 +223,10 @@ stream {
         server 10.0.3.100:5270;
         server 10.0.3.200:5270;
     }
+    upstream backend_mysql {
+        server 10.0.3.10:3306;
+        server 10.0.3.20:3306;
+    }
 
     server {
         listen 5222;
@@ -245,6 +278,12 @@ stream {
 #        ssl_certificate /etc/letsencrypt/${DUCKDNS_SUBDOMAIN}.duckdns.org/fullchain.pem;
 #        ssl_certificate_key /etc/letsencrypt/${DUCKDNS_SUBDOMAIN}.duckdns.org/keyfile.pem;
         proxy_ssl_verify off;
+    }
+    server {
+        listen 3306;
+        proxy_pass backend_mysql;
+        proxy_timeout 600s;
+        proxy_connect_timeout 600s;
     }
 }
 STREAM_CONF
