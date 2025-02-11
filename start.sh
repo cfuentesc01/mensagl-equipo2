@@ -436,7 +436,7 @@ find "$DEST_DIR" -type f -name "*.sh" -exec sed -i \
     -e "s|\${ALUMNO}|${ALUMNO}|g" \
     -e "s|\${EMAIL}|${EMAIL}|g" \
     -e "s|\${RDS_INSTANCE_ID}|${RDS_INSTANCE_ID}|g" \
-    -e "s|\${RDS_ENDPOINT}|${$RDS_ENDPOINT}|g" \
+    -e "s|\${RDS_ENDPOINT}|${RDS_ENDPOINT}|g" \
     -e "s|\${wDBName}|${wDBName}|g" \
     -e "s|\${DB_USERNAME}|${DB_USERNAME}|g" \
     -e "s|\${DB_PASSWORD}|${DB_PASSWORD}|g" {} +
