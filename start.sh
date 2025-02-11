@@ -735,7 +735,7 @@ echo "${INSTANCE_NAME} created"
 
 # ====== Create Security Group ======
 SG_ID_UBUNTU=$(aws ec2 create-security-group \
-    --group-name "$SG_NAME" \
+    --group-name "RAID-RSYNC" \
     --description "Security Group for Ubuntu VM with RAID1" \
     --vpc-id "$VPC_ID" \
     --query "GroupId" \
