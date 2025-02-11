@@ -5,15 +5,16 @@ export DUCKDNS_SUBDOMAIN2="${DUCKDNS_SUBDOMAIN2}"
 export EMAIL="${EMAIL}"
 
 # Update and install necessary packages
-apt-get update -y
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y curl certbot nginx-full wget python3-pip
-sudo systemctl stop nginx
+sudo apt update && sudo  DEBIAN_FRONTEND=noninteractive apt install nginx-full python3-pip pipx -y
 sudo snap install --classic certbot
 sudo ln -s /snap/bin/certbot /usr/bin/certbot
 pip install certbot-dns-duckdns
-snap install certbot-dns-duckdns
+pipx install certbot-dns-duckdns
+sudo snap install --classic certbot
+sudo snap install certbot-dns-duckdns
 sudo snap set certbot trust-plugin-with-root=ok
 sudo snap connect certbot:plugin certbot-dns-duckdns
+
 
 # Set up DuckDNS - Update the DuckDNS IP every 5 minutes
 echo "Setting up DuckDNS update script..."
@@ -35,7 +36,7 @@ sleep 10
 
 sudo certbot certonly  --non-interactive \
     --agree-tos \
-    --email ${EMAIL} \
+    --email "${EMAIL}" \
     --preferred-challenges dns \
     --authenticator dns-duckdns \
     --dns-duckdns-token "${DUCKDNS_TOKEN}" \
@@ -43,13 +44,13 @@ sudo certbot certonly  --non-interactive \
     -d "${DUCKDNS_SUBDOMAIN2}.duckdns.org"
 sudo certbot certonly  --non-interactive \
     --agree-tos \
-    --email ${EMAIL} \
+    --email "${EMAIL}" \
     --preferred-challenges dns \
     --authenticator dns-duckdns \
     --dns-duckdns-token "${DUCKDNS_TOKEN}" \
     --dns-duckdns-propagation-seconds 120 \
     -d "${DUCKDNS_SUBDOMAIN2}.duckdns.org"
-    
+
 
 cat <<EOF > /etc/nginx/sites-available/proxy_site
 upstream backend_servers {
@@ -88,3 +89,36 @@ rm /etc/nginx/sites-available/default
 sudo systemctl start nginx
 systemctl enable nginx
 echo "DDNS installed !"
+
+
+cat <<CERT > /home/ubuntu/certs.sh
+#!/bin/bash
+sudo systemctl stop nginx
+sudo certbot certonly  --non-interactive \
+    --agree-tos \
+    --email "${EMAIL}" \
+    --preferred-challenges dns \
+    --authenticator dns-duckdns \
+    --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+    --dns-duckdns-propagation-seconds 120 \
+    -d "${DUCKDNS_SUBDOMAIN2}.duckdns.org"
+sudo certbot certonly  --non-interactive \
+    --agree-tos \
+    --email "${EMAIL}" \
+    --preferred-challenges dns \
+    --authenticator dns-duckdns \
+    --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+    --dns-duckdns-propagation-seconds 120 \
+    -d "*.${DUCKDNS_SUBDOMAIN2}.duckdns.org"
+
+mkdir /home/ubuntu/certs
+mkdir -p /home/ubuntu/certs/wildcard
+
+sudo cp /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN2}.duckdns.org/* /home/ubuntu/certs
+sudo cp /etc/letsencrypt/live/_.${DUCKDNS_SUBDOMAIN2}.duckdns.org-0001/* /home/ubuntu/certs/wildcard
+sudo chown -R ubuntu:ubuntu /home/ubuntu/certs
+sudo chown -R ubuntu:ubuntu /home/ubuntu/certs/wildcard
+sudo systemctl start nginx
+sudo systemctl restart nginx
+CERT
+chmod +x /home/ubuntu/certs.sh
