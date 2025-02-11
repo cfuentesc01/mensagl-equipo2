@@ -32,54 +32,38 @@ echo "Updating DuckDNS IP..."
 sleep 10
 
 
-CERT_PATH="/etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org/fullchain.pem"
-# Check if the domain certificate already exists
-if [ ! -f "$CERT_PATH" ]; then
-    echo "Obtaining SSL certificate for ${DUCKDNS_SUBDOMAIN}.duckdns.org..."
-    certbot certonly --non-interactive \
-        --agree-tos \
-        --email "${EMAIL}" \
-        --preferred-challenges dns \
-        --authenticator dns-duckdns \
-        --dns-duckdns-token "${DUCKDNS_TOKEN}" \
-        --dns-duckdns-propagation-seconds 120 \
-        -d "${DUCKDNS_SUBDOMAIN}.duckdns.org"
-
-    # Verify if the certificate was successfully created
-    if [ -f "$CERT_PATH" ]; then
-        echo "Domain certificate created successfully."
-    else
-        echo "Failed to create domain certificate. Exiting..."
-        exit 1
-    fi
-else
-    echo "Domain certificate already exists."
-fi
-
-# Now request the wildcard certificate
-WILDCARD_CERT_PATH="/etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org/fullchain.pem"
-if [ ! -f "$WILDCARD_CERT_PATH" ]; then
-    echo "Obtaining wildcard SSL certificate for *.${DUCKDNS_SUBDOMAIN}.duckdns.org..."
-    certbot certonly --non-interactive \
-        --agree-tos \
-        --email "${EMAIL}" \
-        --preferred-challenges dns \
-        --authenticator dns-duckdns \
-        --dns-duckdns-token "${DUCKDNS_TOKEN}" \
-        --dns-duckdns-propagation-seconds 120 \
-        -d "*.${DUCKDNS_SUBDOMAIN}.duckdns.org"
-
-    # Verify if the wildcard certificate was successfully created
-    if [ -f "$WILDCARD_CERT_PATH" ]; then
-        echo "Wildcard certificate created successfully."
-    else
-        echo "Failed to create wildcard certificate. Exiting..."
-        exit 1
-    fi
-else
-    echo "Wildcard certificate already exists."
-fi
-
+sudo certbot certonly  --non-interactive \
+    --agree-tos \
+    --email ${EMAIL} \
+    --preferred-challenges dns \
+    --authenticator dns-duckdns \
+    --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+    --dns-duckdns-propagation-seconds 60 \
+    -d "${DUCKDNS_SUBDOMAIN}.duckdns.org"
+sudo certbot certonly  --non-interactive \
+    --agree-tos \
+    --email ${EMAIL} \
+    --preferred-challenges dns \
+    --authenticator dns-duckdns \
+    --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+    --dns-duckdns-propagation-seconds 120 \
+    -d "${DUCKDNS_SUBDOMAIN}.duckdns.org"
+sudo certbot certonly  --non-interactive \
+    --agree-tos \
+    --email ${EMAIL} \
+    --preferred-challenges dns \
+    --authenticator dns-duckdns \
+    --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+    --dns-duckdns-propagation-seconds 60 \
+    -d "*.${DUCKDNS_SUBDOMAIN}.duckdns.org"
+sudo certbot certonly  --non-interactive \
+    --agree-tos \
+    --email ${EMAIL} \
+    --preferred-challenges dns \
+    --authenticator dns-duckdns \
+    --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+    --dns-duckdns-propagation-seconds 120 \
+    -d "*.${DUCKDNS_SUBDOMAIN}.duckdns.org"
 
 
 # Install and configure NGINX
