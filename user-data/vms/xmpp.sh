@@ -97,7 +97,7 @@ ssl = {
 
 sudo apt install mysql-client mysql-server -y
 sleep 300
-sudo mysql -h '10.0.3.10' -u 'cowboy_del_infierno' -p'_Admin123' -e "CREATE DATABASE IF NOT EXISTS xmpp_db;"
+sudo mysql -h '${DUCKDNS_SUBDOMAIN}' -u 'cowboy_del_infierno' -p'_Admin123' -e "CREATE DATABASE IF NOT EXISTS xmpp_db;"
 
 sudo systemctl restart prosody
 
