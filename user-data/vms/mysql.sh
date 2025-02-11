@@ -25,8 +25,7 @@ awk -i inplace '
 echo "Updated MySQL Config:"
 cat "$CONFIG_FILE"
 
-sudo systemctl restart mysql
-sleep 20
+#sudo systemctl restart mysql
 
 # Secure MySQL User Creation
 sudo mysql -e "CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'%' IDENTIFIED WITH mysql_native_password BY '${DB_PASSWORD}';"
@@ -34,10 +33,18 @@ sudo mysql -e "GRANT ALL PRIVILEGES ON *.* TO '${DB_USERNAME}'@'%' WITH GRANT OP
 sudo mysql -e "GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '${DB_USERNAME}'@'%';"
 sudo mysql -e "FLUSH PRIVILEGES;"
 
-# Verify the user was created
-sudo mysql -e "SELECT user, host FROM mysql.user;"
+mysql -u root <<SQL
+CHANGE MASTER TO
+    MASTER_HOST='10.0.3.20',
+    MASTER_USER='${DB_USERNAME}',
+    MASTER_PASSWORD='${DB_PASSWORD}',
+    MASTER_LOG_FILE='$BINLOG_FILE',
+    MASTER_LOG_POS=$BINLOG_POSITION,
+    MASTER_SSL=0;
+START SLAVE;
+SHOW SLAVE STATUS\G;
+SQL
 
-# Final restart to ensure everything is applied
+sleep 20
 sudo systemctl restart mysql
-
 echo "MySQL DB XMPP MASTER SETUP COMPLETED!"
