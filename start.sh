@@ -17,6 +17,7 @@ read DUCKDNS_SUBDOMAIN
 printf "%s" "DuckDNS domain2: "
 read DUCKDNS_SUBDOMAIN2
 
+
 # Key pair SSH
 KEY_NAME="ssh-mensagl-2025-${ALUMNO}"
 AMI_ID="ami-04b4f1a9cf54c11d0"          # Ubuntu 24.04 AMI ID
@@ -352,7 +353,17 @@ aws ec2 create-key-pair \
   --query "KeyMaterial" \
   --output text > ${KEY_NAME}.pem
 
+aws ec2 create-key-pair \
+  --key-name "${KEY_NAME}-RAID" \
+  --query "KeyMaterial" \
+  --output text > ${KEY_NAME}-RAID.pem
+
 echo "SSH KEYS !";
+
+
+
+
+
 
 
 #aws rds delete-db-instance \
@@ -703,8 +714,68 @@ echo "${INSTANCE_NAME} created"
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ====== Create Security Group ======
+SG_ID_UBUNTU=$(aws ec2 create-security-group \
+    --group-name "$SG_NAME" \
+    --description "Security Group for Ubuntu VM with RAID1" \
+    --vpc-id "$VPC_ID" \
+    --query "GroupId" \
+    --output text)
+aws ec2 authorize-security-group-ingress \
+    --group-id "$SG_ID_UBUNTU" \
+    --protocol tcp \
+    --port 22 \
+    --cidr 0.0.0.0/0
+
+# Allow HTTP (Port 80) - If you plan to run a web server
+aws ec2 authorize-security-group-ingress \
+    --group-id "$SG_ID_UBUNTU" \
+    --protocol tcp \
+    --port 80 \
+    --cidr 0.0.0.0/0
+
+# Allow HTTPS (Port 443) - If needed
+aws ec2 authorize-security-group-ingress \
+    --group-id "$SG_ID_UBUNTU" \
+    --protocol tcp \
+    --port 443 \
+    --cidr 0.0.0.0/0
+# Allow SSH
+aws ec2 authorize-security-group-ingress \
+    --group-id "$SG_ID_UBUNTU" \
+    --protocol tcp \
+    --port 22 \
+    --cidr 0.0.0.0/0
+
+# Allow all outbound traffic
+aws ec2 authorize-security-group-egress \
+    --group-id "$SG_ID_UBUNTU" \
+    --protocol -1 \
+    --port all \
+    --cidr 0.0.0.0/0
+
+
 # ====== Variables ======
-INSTANCE_NAME="UBUNTU-VM"                    
+INSTANCE_NAME="RAID-RSYNC"                    
 SUBNET_ID="${SUBNET_PRIVATE2}"               
 SECURITY_GROUP_ID="${SG_ID_UBUNTU}"          
 PRIVATE_IP="10.0.3.250"                      
@@ -740,7 +811,7 @@ echo "Created EBS Volumes: ${VOLUME_ID_1}, ${VOLUME_ID_2}"
 INSTANCE_ID=$(aws ec2 run-instances \
     --image-id "$AMI_ID" \
     --instance-type "$INSTANCE_TYPE" \
-    --key-name "$KEY_NAME" \
+    --key-name "${KEY_NAME}-RAID" \
     --block-device-mappings "[
         {\"DeviceName\":\"/dev/sda1\",\"Ebs\":{\"VolumeSize\":$ROOT_VOLUME_SIZE,\"VolumeType\":\"gp3\",\"DeleteOnTermination\":true}}
     ]" \
@@ -751,3 +822,10 @@ INSTANCE_ID=$(aws ec2 run-instances \
     --output text)
 
 echo "EC2 Instance Created: ${INSTANCE_ID}"
+
+
+# ====== Attach the Volumes ======
+aws ec2 attach-volume --volume-id $VOLUME_ID_1 --instance-id $INSTANCE_ID --device /dev/xvdf
+aws ec2 attach-volume --volume-id $VOLUME_ID_2 --instance-id $INSTANCE_ID --device /dev/xvdg
+
+echo "Volumes attached to ${INSTANCE_ID}: $VOLUME_ID_1 (/dev/xvdf), $VOLUME_ID_2 (/dev/xvdg)"
