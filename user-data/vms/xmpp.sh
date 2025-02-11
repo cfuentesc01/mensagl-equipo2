@@ -100,7 +100,7 @@ ssl = {
 
 sudo apt install mysql-client mysql-server -y
 sleep 240
-sudo mysql -h "10.0.1.10" -u "${DB_USERNAME}" -p"${DB_PASSWORD}" -e "CREATE DATABASE IF NOT EXISTS xmpp_db;"
+sudo mysql -h "10.0.3.10" -u "${DB_USERNAME}" -p"${DB_PASSWORD}" -e "CREATE DATABASE IF NOT EXISTS xmpp_db;"
 
 sudo systemctl restart prosody
 sudo prosodyctl register mario ${DUCKDNS_SUBDOMAIN}.duckdns.org Admin123
