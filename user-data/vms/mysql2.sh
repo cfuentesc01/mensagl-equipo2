@@ -25,14 +25,21 @@ awk -i inplace '
 echo "Updated MySQL Config:"
 cat "$CONFIG_FILE"
 
-sudo systemctl restart mysql
-sleep 40
+#sudo systemctl restart mysql
+sleep 20
 
 echo "Obteniendo información del maestro..."
 MASTER_STATUS=$(mysql -h "10.0.3.10" -u "${DB_USERNAME}" -p"${DB_PASSWORD}" -e "SHOW MASTER STATUS\G" 2>/dev/null)
 BINLOG_FILE=$(echo "$MASTER_STATUS" | grep "File:" | awk '{print $2}')
 BINLOG_POSITION=$(echo "$MASTER_STATUS" | grep "Position:" | awk '{print $2}')
 echo "Archivo binlog: $BINLOG_FILE, Posición: $BINLOG_POSITION"
+
+# Secure MySQL User Creation
+sudo mysql -e "CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'%' IDENTIFIED WITH mysql_native_password BY '${DB_PASSWORD}';"
+sudo mysql -e "GRANT ALL PRIVILEGES ON *.* TO '${DB_USERNAME}'@'%' WITH GRANT OPTION;"
+sudo mysql -e "GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '${DB_USERNAME}'@'%';"
+sudo mysql -e "FLUSH PRIVILEGES;"
+
 mysql -u root <<SQL
 CHANGE MASTER TO
     MASTER_HOST='10.0.3.10',
@@ -45,4 +52,5 @@ START SLAVE;
 SHOW SLAVE STATUS\G;
 SQL
 
+sudo systemctl restart mysql
 echo "MySQL DB XMPP SLAVE !!"
