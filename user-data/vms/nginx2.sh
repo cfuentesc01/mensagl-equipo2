@@ -33,11 +33,14 @@ echo "Updating DuckDNS IP..."
 sleep 30
 # Obtain SSL certificate in standalone mode (non-interactive)
 echo "Obtaining SSL certificate using certbot..."
-certbot certonly --standalone \
-  --non-interactive \
-  --agree-tos \
-  --email "${EMAIL}" \
-  -d "${DUCKDNS_SUBDOMAIN}.duckdns.org"
+certbot certonly --non-interactive \
+ --agree-tos \
+ --email "${EMAIL}" \
+ --preferred-challenges dns \
+ --authenticator dns-duckdns \
+ --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+ --dns-duckdns-propagation-seconds 60 \
+ -d "${DUCKDNS_SUBDOMAIN2}.duckdns.org"
 
 cat <<EOF > /etc/nginx/sites-available/proxy_site
 upstream backend_servers {
