@@ -16,7 +16,6 @@ sudo snap set certbot trust-plugin-with-root=ok
 sudo snap connect certbot:plugin certbot-dns-duckdns
 
 
-# Set up DuckDNS - Update the DuckDNS IP every 5 minutes
 echo "Setting up DuckDNS update script..."
 mkdir -p /opt/duckdns
 cat <<DUCKDNS_SCRIPT > /opt/duckdns/duckdns.sh
@@ -27,7 +26,6 @@ DUCKDNS_SCRIPT
 chmod +x /opt/duckdns/duckdns.sh
 (crontab -l 2>/dev/null; echo "*/5 * * * * /opt/duckdns/duckdns.sh >/dev/null 2>&1") | crontab -
 
-# Update DuckDNS immediately to set the IP
 echo "Updating DuckDNS IP..."
 /opt/duckdns/duckdns.sh
 
@@ -231,50 +229,37 @@ stream {
     server {
         listen 5222;
         proxy_pass backend_xmpp_5222;
-#        proxy_protocol on;
     }
-
     server {
         listen 5280;
         proxy_pass backend_xmpp_5280;
-#        proxy_protocol on;
     }
-
     server {
         listen 5281;
         proxy_pass backend_xmpp_5281;
- #       proxy_protocol on;
     }
-
     server {
         listen 5347;
         proxy_pass backend_xmpp_5347;
-#        proxy_protocol on;
     }
     server {
         listen 4443;
         proxy_pass backend_xmpp_4443;
-#        proxy_protocol on;
     }
     server {
         listen 10000;
         proxy_pass backend_xmpp_10000;
-#        proxy_protocol on;
     }
-
     server {
         listen 5269;
         proxy_pass backend_xmpp_5269;
-#        proxy_protocol on;
 #       ssl_certificate /etc/letsencrypt/${DUCKDNS_SUBDOMAIN}.duckdns.org/fullchain.pem;
 #       ssl_certificate_key /etc/letsencrypt/${DUCKDNS_SUBDOMAIN}.duckdns.org/keyfile.pem;
         proxy_ssl_verify off;
     }
-
     server {
         listen 5270;
         proxy_pass backend_xmpp_5270;
-#        proxy_protocol on;
 #        ssl_certificate /etc/letsencrypt/${DUCKDNS_SUBDOMAIN}.duckdns.org/fullchain.pem;
 #        ssl_certificate_key /etc/letsencrypt/${DUCKDNS_SUBDOMAIN}.duckdns.org/keyfile.pem;
         proxy_ssl_verify off;
