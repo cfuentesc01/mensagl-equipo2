@@ -776,7 +776,7 @@ aws ec2 authorize-security-group-egress \
 
 # ====== Variables ======
 INSTANCE_NAME="RAID-RSYNC"                    
-SUBNET_ID="${SUBNET_PRIVATE2}"               
+SUBNET_ID="${SUBNET_PRIVATE1}"               
 SECURITY_GROUP_ID="${SG_ID_UBUNTU}"          
 PRIVATE_IP="10.0.3.250"                      
 
