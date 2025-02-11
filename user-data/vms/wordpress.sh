@@ -70,7 +70,7 @@ WP_CONFIG
 sed -i "s/\${DUCKDNS_SUBDOMAIN2}/${DUCKDNS_SUBDOMAIN2}/g" /var/www/html/wp-config.php
 
 # === Enable SSL and Restart Apache ===
-sudo a2enmod ssl
+sudo a2enmod ssl headers rewrite
 sudo a2ensite default-ssl
 sudo a2dissite 000-default
 sudo systemctl restart apache2
