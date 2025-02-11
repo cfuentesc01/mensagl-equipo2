@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 export DUCKDNS_SUBDOMAIN="${DUCKDNS_SUBDOMAIN}"
+export DB_USERNAME="${DB_USERNAME}"
+export DB_PASSWORD="${DB_PASSWORD}"
+
 sudo apt update -y
 
 sudo apt install prosody -y
@@ -97,7 +100,7 @@ ssl = {
 
 sudo apt install mysql-client mysql-server -y
 sleep 240
-sudo mysql -h '${DUCKDNS_SUBDOMAIN}' -u 'cowboy_del_infierno' -p'_Admin123' -e "CREATE DATABASE IF NOT EXISTS xmpp_db;"
+sudo mysql -h "10.0.1.10" -u "${DB_USERNAME}" -p"${DB_PASSWORD}" -e "CREATE DATABASE IF NOT EXISTS xmpp_db;"
 
 sudo systemctl restart prosody
 sudo prosodyctl register mario ${DUCKDNS_SUBDOMAIN}.duckdns.org Admin123
