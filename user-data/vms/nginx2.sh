@@ -40,15 +40,7 @@ certbot certonly --non-interactive \
  --authenticator dns-duckdns \
  --dns-duckdns-token "${DUCKDNS_TOKEN}" \
  --dns-duckdns-propagation-seconds 60 \
- -d "${DUCKDNS_SUBDOMAIN2}.duckdns.org"
-
-certbot certonly --non-interactive \
- --agree-tos \
- --email "${EMAIL}" \
- --preferred-challenges dns \
- --authenticator dns-duckdns \
- --dns-duckdns-token "${DUCKDNS_TOKEN}" \
- --dns-duckdns-propagation-seconds 120 \
+ -d "${DUCKDNS_SUBDOMAIN2}.duckdns.org" \
  -d "${DUCKDNS_SUBDOMAIN2}.duckdns.org"
 
 
@@ -86,6 +78,9 @@ ln -s /etc/nginx/sites-available/proxy_site /etc/nginx/sites-enabled/
 rm /etc/nginx/sites-enabled/default
 rm /etc/nginx/sites-available/default
 
+sudo systemctl start nginx
+systemctl enable nginx
+echo "DDNS installed !"
 sudo systemctl start nginx
 systemctl enable nginx
 echo "DDNS installed !"
