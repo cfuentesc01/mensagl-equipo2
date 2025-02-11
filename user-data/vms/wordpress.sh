@@ -44,8 +44,11 @@ sudo mysql -h "${RDS_ENDPOINT}" -u "${DB_USERNAME}" -p"${DB_PASSWORD}" -e "CREAT
 sudo mysql -h "${RDS_ENDPOINT}" -u "${DB_USERNAME}" -p"${DB_PASSWORD}" -e "GRANT ALL PRIVILEGES ON ${wDBName}.* TO '${DB_USERNAME}'@'%';"
 sudo mysql -h "${RDS_ENDPOINT}" -u "${DB_USERNAME}" -p"${DB_PASSWORD}" -e "FLUSH PRIVILEGES;"
 
+
 # === Configure WordPress ===
+sleep 10
 sudo -u ubuntu -k -- wp core config --dbname="${wDBName}" --dbuser="${DB_USERNAME}" --dbpass="${DB_PASSWORD}" --dbhost="${RDS_ENDPOINT}" --dbprefix=wp_ --path=/var/www/html
+sleep 10
 sudo -u ubuntu -k -- wp core install --url="${DUCKDNS_SUBDOMAIN2}" --title="MensAGL" --admin_user="${DB_USERNAME}" --admin_password="${DB_PASSWORD}" --admin_email="${EMAIL}" --path=/var/www/html
 
 # === Install WordPress Plugins ===
