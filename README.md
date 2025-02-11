@@ -49,8 +49,8 @@ Tambíen existen otros scripts de AWS CLI para crear objetos en AWS de forma sep
 - `DuckDNS API` - Token proporcionado por DuckDNS en su página web.
 - `dominios DuckDNS` - 2 Dominios DuckDNS a utlizar, tanto para el servico de mensajería como el de incidencias.
 - `RDS Wordpress Database` - Nombre de la base de datos para el RDS Wordpress.
-- `RDS Wordpress Username` - Nombre de usuario para el RDS Wordpress.
-- `RDS Wordpress Password` - Contraseña para el usuario del RDS Wordpress. 
+- `RDS Wordpress & XMPP Username` - Nombre de usuario para el RDS Wordpress.
+- `RDS Wordpress & XMPP Password` - Contraseña para el usuario del RDS Wordpress. 
 
 ##  🚨 Still in development 🚧
 ![z37wrt6awmkd1](https://github.com/user-attachments/assets/3cadc2d4-bcfc-4751-bde9-c74307269490)
