@@ -21,6 +21,7 @@ read DUCKDNS_SUBDOMAIN2
 KEY_NAME="ssh-mensagl-2025-${ALUMNO}"
 AMI_ID="ami-04b4f1a9cf54c11d0"          # Ubuntu 24.04 AMI ID
 
+
 # Variables for RDS
 RDS_INSTANCE_ID="wordpress-db"
 printf "%s" "RDS Wordpress Database: "
@@ -175,7 +176,12 @@ aws ec2 authorize-security-group-ingress \
   --protocol tcp \
   --port 12345 \
   --cidr $MY_IP
-
+# Add inbound rule to allow MYSQL
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID_PROXY \
+  --protocol tcp \
+  --port 3306 \
+  --cidr $MY_IP
 
 
 
@@ -686,3 +692,62 @@ INSTANCE_ID=$(aws ec2 run-instances \
     --query "Instances[0].InstanceId" \
     --output text)
 echo "${INSTANCE_NAME} created"
+
+
+
+
+
+
+
+
+
+
+
+# ====== Variables ======
+INSTANCE_NAME="UBUNTU-VM"                    
+SUBNET_ID="${SUBNET_PRIVATE2}"               
+SECURITY_GROUP_ID="${SG_ID_UBUNTU}"          
+PRIVATE_IP="10.0.3.250"                      
+
+INSTANCE_TYPE="t2.micro"                     
+KEY_NAME="${KEY_NAME}"                       
+
+ROOT_VOLUME_SIZE=8                           
+RAID_VOLUME_SIZE=20                           
+VOLUME_TYPE="gp2"                            
+
+# ====== Create Two EBS Volumes for RAID 1 ======
+VOLUME_ID_1=$(aws ec2 create-volume \
+    --size $RAID_VOLUME_SIZE \
+    --volume-type $VOLUME_TYPE \
+    --availability-zone $AVAILABILITY_ZONE1 \
+    --tag-specifications "ResourceType=volume,Tags=[{Key=Name,Value=${INSTANCE_NAME}-RAID1-DISK1}]" \
+    --query "VolumeId" \
+    --output text)
+
+VOLUME_ID_2=$(aws ec2 create-volume \
+    --size $RAID_VOLUME_SIZE \
+    --volume-type $VOLUME_TYPE \
+    --availability-zone $AVAILABILITY_ZONE1 \
+    --tag-specifications "ResourceType=volume,Tags=[{Key=Name,Value=${INSTANCE_NAME}-RAID1-DISK2}]" \
+    --query "VolumeId" \
+    --output text)
+
+echo "Created EBS Volumes: ${VOLUME_ID_1}, ${VOLUME_ID_2}"
+
+
+# ====== Create EC2 Instance ======
+INSTANCE_ID=$(aws ec2 run-instances \
+    --image-id "$AMI_ID" \
+    --instance-type "$INSTANCE_TYPE" \
+    --key-name "$KEY_NAME" \
+    --block-device-mappings "[
+        {\"DeviceName\":\"/dev/sda1\",\"Ebs\":{\"VolumeSize\":$ROOT_VOLUME_SIZE,\"VolumeType\":\"gp3\",\"DeleteOnTermination\":true}}
+    ]" \
+    --network-interfaces "SubnetId=$SUBNET_ID,AssociatePublicIpAddress=true,DeviceIndex=0,PrivateIpAddresses=[{Primary=true,PrivateIpAddress=$PRIVATE_IP}],Groups=[$SECURITY_GROUP_ID]" \
+    --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$INSTANCE_NAME}]" \
+    --user-data file://$DEST_DIR/raid_rsync.sh \
+    --query "Instances[0].InstanceId" \
+    --output text)
+
+echo "EC2 Instance Created: ${INSTANCE_ID}"
