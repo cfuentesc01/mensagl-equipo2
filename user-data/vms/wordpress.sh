@@ -57,17 +57,17 @@ sleep 120
 #done
 
 # === Update wp-config.php with Reverse Proxy Settings ===
-cat <<WP_CONFIG >> /var/www/html/wp-config.php
-if(isset(\$_SERVER['HTTP_X_FORWARDED_FOR'])) {
-    \$list = explode(',', \$_SERVER['HTTP_X_FORWARDED_FOR']);
-    \$_SERVER['REMOTE_ADDR'] = \$list[0];
-}
-\$_SERVER['HTTP_HOST'] = '${DUCKDNS_SUBDOMAIN2}.duckdns.org';
-\$_SERVER['REMOTE_ADDR'] = '${DUCKDNS_SUBDOMAIN2}.duckdns.org';
-\$_SERVER['SERVER_ADDR'] = '${DUCKDNS_SUBDOMAIN2}.duckdns.org';
-WP_CONFIG
+#cat <<WP_CONFIG >> /var/www/html/wp-config.php
+#if(isset(\$_SERVER['HTTP_X_FORWARDED_FOR'])) {
+#    \$list = explode(',', \$_SERVER['HTTP_X_FORWARDED_FOR']);
+#    \$_SERVER['REMOTE_ADDR'] = \$list[0];
+#}
+#\$_SERVER['HTTP_HOST'] = '${DUCKDNS_SUBDOMAIN2}.duckdns.org';
+#\$_SERVER['REMOTE_ADDR'] = '${DUCKDNS_SUBDOMAIN2}.duckdns.org';
+#\$_SERVER['SERVER_ADDR'] = '${DUCKDNS_SUBDOMAIN2}.duckdns.org';
+#WP_CONFIG
 
-sed -i "s/\${DUCKDNS_SUBDOMAIN2}/${DUCKDNS_SUBDOMAIN2}/g" /var/www/html/wp-config.php
+#sed -i "s/\${DUCKDNS_SUBDOMAIN2}/${DUCKDNS_SUBDOMAIN2}/g" /var/www/html/wp-config.php
 
 # === Enable SSL and Restart Apache ===
 sudo a2enmod ssl headers rewrite
