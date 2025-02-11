@@ -33,31 +33,23 @@ echo "Updating DuckDNS IP..."
 sleep 10
 
 
-CERT_PATH="/etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org/fullchain.pem"
-# Check if the domain certificate already exists
-if [ ! -f "$CERT_PATH" ]; then
-    echo "Obtaining SSL certificate for ${DUCKDNS_SUBDOMAIN}.duckdns.org..."
-    certbot certonly --non-interactive \
-        --agree-tos \
-        --email "${EMAIL}" \
-        --preferred-challenges dns \
-        --authenticator dns-duckdns \
-        --dns-duckdns-token "${DUCKDNS_TOKEN}" \
-        --dns-duckdns-propagation-seconds 120 \
-        -d "${DUCKDNS_SUBDOMAIN}.duckdns.org"
-
-    # Verify if the certificate was successfully created
-    if [ -f "$CERT_PATH" ]; then
-        echo "Domain certificate created successfully."
-    else
-        echo "Failed to create domain certificate. Exiting..."
-        exit 1
-    fi
-else
-    echo "Domain certificate already exists."
-fi
-
-
+sudo certbot certonly  --non-interactive \
+    --agree-tos \
+    --email ${EMAIL} \
+    --preferred-challenges dns \
+    --authenticator dns-duckdns \
+    --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+    --dns-duckdns-propagation-seconds 60 \
+    -d "${DUCKDNS_SUBDOMAIN2}.duckdns.org"
+sudo certbot certonly  --non-interactive \
+    --agree-tos \
+    --email ${EMAIL} \
+    --preferred-challenges dns \
+    --authenticator dns-duckdns \
+    --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+    --dns-duckdns-propagation-seconds 120 \
+    -d "${DUCKDNS_SUBDOMAIN2}.duckdns.org"
+    
 
 cat <<EOF > /etc/nginx/sites-available/proxy_site
 upstream backend_servers {
@@ -68,7 +60,7 @@ upstream backend_servers {
 server {
     listen 80;
     server_name ${DUCKDNS_SUBDOMAIN2}.duckdns.org;
-    return 301 https://\$host\$request_uri;  # Redirect HTTP to HTTPS
+    return 301 https://\$host\$request_uri;
 }
 
 server {
