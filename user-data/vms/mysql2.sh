@@ -10,7 +10,7 @@ sudo apt install mysql-server mysql-client -y
 sudo systemctl start mysql
 sudo systemctl enable mysql
 
-sleep 60
+sleep 20
 # MySQL Configuration File
 export CONFIG_FILE="/etc/mysql/mysql.conf.d/mysqld.cnf"
 # Update MySQL Configuration using awk
@@ -26,7 +26,7 @@ echo "Updated MySQL Config:"
 cat "$CONFIG_FILE"
 
 sudo systemctl restart mysql
-sleep 120
+sleep 40
 
 echo "Obteniendo información del maestro..."
 MASTER_STATUS=$(mysql -h "10.0.3.10" -u "${DB_USERNAME}" -p"${DB_PASSWORD}" -e "SHOW MASTER STATUS\G" 2>/dev/null)
