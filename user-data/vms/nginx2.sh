@@ -30,18 +30,33 @@ chmod +x /opt/duckdns/duckdns.sh
 echo "Updating DuckDNS IP..."
 /opt/duckdns/duckdns.sh
 
-sleep 30
-# Obtain SSL certificate in standalone mode (non-interactive)
-echo "Obtaining SSL certificate using certbot..."
-certbot certonly --non-interactive \
- --agree-tos \
- --email "${EMAIL}" \
- --preferred-challenges dns \
- --authenticator dns-duckdns \
- --dns-duckdns-token "${DUCKDNS_TOKEN}" \
- --dns-duckdns-propagation-seconds 60 \
- -d "${DUCKDNS_SUBDOMAIN2}.duckdns.org" \
- -d "${DUCKDNS_SUBDOMAIN2}.duckdns.org"
+sleep 10
+
+
+CERT_PATH="/etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org/fullchain.pem"
+# Check if the domain certificate already exists
+if [ ! -f "$CERT_PATH" ]; then
+    echo "Obtaining SSL certificate for ${DUCKDNS_SUBDOMAIN}.duckdns.org..."
+    certbot certonly --non-interactive \
+        --agree-tos \
+        --email "${EMAIL}" \
+        --preferred-challenges dns \
+        --authenticator dns-duckdns \
+        --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+        --dns-duckdns-propagation-seconds 120 \
+        -d "${DUCKDNS_SUBDOMAIN}.duckdns.org"
+
+    # Verify if the certificate was successfully created
+    if [ -f "$CERT_PATH" ]; then
+        echo "Domain certificate created successfully."
+    else
+        echo "Failed to create domain certificate. Exiting..."
+        exit 1
+    fi
+else
+    echo "Domain certificate already exists."
+fi
+
 
 
 cat <<EOF > /etc/nginx/sites-available/proxy_site
@@ -78,9 +93,6 @@ ln -s /etc/nginx/sites-available/proxy_site /etc/nginx/sites-enabled/
 rm /etc/nginx/sites-enabled/default
 rm /etc/nginx/sites-available/default
 
-sudo systemctl start nginx
-systemctl enable nginx
-echo "DDNS installed !"
 sudo systemctl start nginx
 systemctl enable nginx
 echo "DDNS installed !"
