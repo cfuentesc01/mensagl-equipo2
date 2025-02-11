@@ -72,7 +72,7 @@ admin = { 'mario@${DUCKDNS_SUBDOMAIN}.duckdns.org' };
 VirtualHost '${DUCKDNS_SUBDOMAIN}.duckdns.org'
 
 storage = 'sql'
-sql = { driver = 'MySQL', database = 'xmpp_db', username = 'cowboy_del_infierno', password = '_Admin123', host = '10.0.3.10' }
+sql = { driver = 'MySQL', database = 'xmpp_db', username = '${DB_USERNAME}', password = '${DB_PASSWORD}', host = '10.0.3.10' }
 
 ssl = {
     certificate = 'certs/${DUCKDNS_SUBDOMAIN}.duckdns.org.crt',
