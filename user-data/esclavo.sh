@@ -1,30 +1,22 @@
 #!/bin/bash
 
-# Verificar ejecución como superusuario
-if [ "$EUID" -ne 0 ]; then
-  echo "Este script debe ejecutarse como superusuario. Usa sudo."
-  exit 1
-fi
-
-# Variables del entorno
 MASTER_IP="10.0.1.10"
 MASTER_USER="replicador"
 MASTER_PASSWORD="Admin123"
 
-echo "Actualizando e instalando MySQL Server..."
 sudo apt update
 sudo apt install mysql-server -y
 
 sudo systemctl start mysql
 sudo systemctl enable mysql
 
-echo "Configurando MySQL para replicación..."
 CONFIG_FILE="/etc/mysql/mysql.conf.d/mysqld.cnf"
 
 if [ -f "$CONFIG_FILE" ]; then
   sudo sed -i "s/^bind-address.*/bind-address = 0.0.0.0/" "$CONFIG_FILE"
   sudo sed -i "s/^# server-id.*/server-id = 2/" "$CONFIG_FILE"
   sudo sed -i "s|^# log_bin.*|log_bin = /var/log/mysql/mysql-bin.log|" "$CONFIG_FILE"
+  sudo sed -i "s/^max_binlog_size.*/max_binlog_size = 10000M/" "$CONFIG_PATH"
 else
   echo "Archivo de configuración no encontrado. Abortando."
   exit 1
@@ -55,5 +47,3 @@ CHANGE MASTER TO
 START SLAVE;
 SHOW SLAVE STATUS\G;
 EOF
-
-echo "Replicación configurada. Verifica con SHOW SLAVE STATUS\G"
