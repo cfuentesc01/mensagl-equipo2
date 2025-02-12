@@ -99,7 +99,7 @@ ssl = {
 " | sudo tee -a /etc/prosody/prosody.cfg.lua > /dev/null 
 
 sudo apt install mysql-client mysql-server -y
-sleep 240
+sleep 360
 sudo mysql -h "10.0.3.10" -u "${DB_USERNAME}" -p"${DB_PASSWORD}" -e "CREATE DATABASE IF NOT EXISTS xmpp_db;"
 
 sudo systemctl restart prosody
