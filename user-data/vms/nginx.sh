@@ -34,26 +34,26 @@ echo "Updating DuckDNS IP..."
 
 sleep 10
 
-while [ ! -e /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org ]; do
-    sudo certbot certonly  --non-interactive \
-        --agree-tos \
-        --email "${EMAIL}" \
-        --preferred-challenges dns \
-        --authenticator dns-duckdns \
-        --dns-duckdns-token "${DUCKDNS_TOKEN}" \
-        --dns-duckdns-propagation-seconds 60 \
-        -d "${DUCKDNS_SUBDOMAIN}.duckdns.org"
-done
-while [ ! -e /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org-0001 ]; do
-    sudo certbot certonly  --non-interactive \
-        --agree-tos \
-        --email "${EMAIL}" \
-        --preferred-challenges dns \
-        --authenticator dns-duckdns \
-        --dns-duckdns-token "${DUCKDNS_TOKEN}" \
-        --dns-duckdns-propagation-seconds 60 \
-        -d "*.${DUCKDNS_SUBDOMAIN}.duckdns.org"
-done
+#while [ ! -e /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org ]; do
+sudo certbot certonly  --non-interactive \
+    --agree-tos \
+    --email "${EMAIL}" \
+    --preferred-challenges dns \
+    --authenticator dns-duckdns \
+    --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+    --dns-duckdns-propagation-seconds 60 \
+    -d "${DUCKDNS_SUBDOMAIN}.duckdns.org"
+#done
+#while [ ! -e /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org-0001 ]; do
+sudo certbot certonly  --non-interactive \
+    --agree-tos \
+    --email "${EMAIL}" \
+    --preferred-challenges dns \
+    --authenticator dns-duckdns \
+    --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+    --dns-duckdns-propagation-seconds 60 \
+    -d "*.${DUCKDNS_SUBDOMAIN}.duckdns.org"
+#done
 
 
 # Install and configure NGINX
