@@ -288,8 +288,8 @@ echo "RDS Endpoint: $RDS_ENDPOINT"
 ###########################################################################################################
 
 
-SRC_DIR="./user-data/vms"
-DEST_DIR="./user-data/result"
+SRC_DIR="../user-data/vms"
+DEST_DIR="../user-data/result"
 
 mkdir -p "$DEST_DIR";
 cp -r "$SRC_DIR/"* "$DEST_DIR/";
