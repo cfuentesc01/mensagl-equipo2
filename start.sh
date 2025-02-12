@@ -12,10 +12,12 @@ read EMAIL
 # DuckDNS variables
 printf "%s" "DuckDNS token: "
 read DUCKDNS_TOKEN
-printf "%s" "DuckDNS domain1: "
+printf "%s" "DuckDNS domain-xmpp: "
 read DUCKDNS_SUBDOMAIN
-printf "%s" "DuckDNS domain2: "
+printf "%s" "DuckDNS domain-wp: "
 read DUCKDNS_SUBDOMAIN2
+
+echo "Starting script"
 
 # Key pair SSH
 KEY_NAME="ssh-mensagl-2025-${ALUMNO}"
