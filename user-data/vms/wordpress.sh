@@ -22,10 +22,10 @@ sudo mv wp-cli.phar /usr/local/bin/wp
 # === Prepare WordPress Directory ===
 sudo rm -rf /var/www/html/*
 sudo chmod -R 755 /var/www/html
-sudo chown -R ubuntu:ubuntu /var/www/html
+sudo chown -R www-data:www-data /var/www/html
 
 # === Download WordPress ===
-sudo -u ubuntu -k -- wp core download --path=/var/www/html
+sudo -u www-data -k -- wp core download --path=/var/www/html
 
 # === Wait for Database to be Ready ===
 sleep 240
@@ -47,27 +47,27 @@ sudo mysql -h "${RDS_ENDPOINT}" -u "${DB_USERNAME}" -p"${DB_PASSWORD}" -e "FLUSH
 sudo rm -rf /var/www/html/wp-config.php
 # === Configure WordPress ===
 sleep 120
-#sudo -u www-data -k -- wp core config --dbname="${wDBName}" --dbuser="${DB_USERNAME}" --dbpass="${DB_PASSWORD}" --dbhost="${RDS_ENDPOINT}" --dbprefix=wp_ --path=/var/www/html
-#sudo -u www-data -k -- wp core install --url="${DUCKDNS_SUBDOMAIN2}" --title="MensAGL" --admin_user="${DB_USERNAME}" --admin_password="${DB_PASSWORD}" --admin_email="${EMAIL}" --path=/var/www/html
+sudo -u www-data -k -- wp core config --dbname="${wDBName}" --dbuser="${DB_USERNAME}" --dbpass="${DB_PASSWORD}" --dbhost="${RDS_ENDPOINT}" --dbprefix=wp_ --path=/var/www/html
+sudo -u www-data -k -- wp core install --url="${DUCKDNS_SUBDOMAIN2}" --title="MensAGL" --admin_user="${DB_USERNAME}" --admin_password="${DB_PASSWORD}" --admin_email="${EMAIL}" --path=/var/www/html
 
 # === Install WordPress Plugins ===
-#PLUGINS=("supportcandy" "updraftplus" "user-registration" "wp-mail-smtp" "wps-hide-login")
-#for PLUGIN in "${PLUGINS[@]}"; do
-#  sudo -u www-data -k -- wp plugin install "$PLUGIN" --activate --path=/var/www/html
-#done
+PLUGINS=("supportcandy" "updraftplus" "user-registration" "wp-mail-smtp" "wps-hide-login")
+for PLUGIN in "${PLUGINS[@]}"; do
+  sudo -u www-data -k -- wp plugin install "$PLUGIN" --activate --path=/var/www/html
+done
 
 # === Update wp-config.php with Reverse Proxy Settings ===
-#cat <<WP_CONFIG >> /var/www/html/wp-config.php
-#if(isset(\$_SERVER['HTTP_X_FORWARDED_FOR'])) {
-#    \$list = explode(',', \$_SERVER['HTTP_X_FORWARDED_FOR']);
-#    \$_SERVER['REMOTE_ADDR'] = \$list[0];
-#}
-#\$_SERVER['HTTP_HOST'] = '${DUCKDNS_SUBDOMAIN2}.duckdns.org';
-#\$_SERVER['REMOTE_ADDR'] = '${DUCKDNS_SUBDOMAIN2}.duckdns.org';
-#\$_SERVER['SERVER_ADDR'] = '${DUCKDNS_SUBDOMAIN2}.duckdns.org';
-#WP_CONFIG
+cat <<WP_CONFIG >> /var/www/html/wp-config.php
+if(isset(\$_SERVER['HTTP_X_FORWARDED_FOR'])) {
+    \$list = explode(',', \$_SERVER['HTTP_X_FORWARDED_FOR']);
+    \$_SERVER['REMOTE_ADDR'] = \$list[0];
+}
+\$_SERVER['HTTP_HOST'] = '${DUCKDNS_SUBDOMAIN2}.duckdns.org';
+\$_SERVER['REMOTE_ADDR'] = '${DUCKDNS_SUBDOMAIN2}.duckdns.org';
+\$_SERVER['SERVER_ADDR'] = '${DUCKDNS_SUBDOMAIN2}.duckdns.org';
+WP_CONFIG
 
-#sed -i "s/\${DUCKDNS_SUBDOMAIN2}/${DUCKDNS_SUBDOMAIN2}/g" /var/www/html/wp-config.php
+sed -i "s/\${DUCKDNS_SUBDOMAIN2}/${DUCKDNS_SUBDOMAIN2}/g" /var/www/html/wp-config.php
 
 # === Enable SSL and Restart Apache ===
 sudo a2enmod ssl headers rewrite
