@@ -24,7 +24,7 @@ awk -i inplace '
 echo "Updated MySQL Config:"
 cat "$CONFIG_FILE"
 
-#sudo systemctl restart mysql
+sudo systemctl restart mysql
 
 
 
