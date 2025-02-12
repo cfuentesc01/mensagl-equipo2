@@ -48,7 +48,7 @@ sudo rm -rf /var/www/html/wp-config.php
 # === Configure WordPress ===
 sleep 120
 sudo -u www-data -k -- wp core config --dbname="${wDBName}" --dbuser="${DB_USERNAME}" --dbpass="${DB_PASSWORD}" --dbhost="${RDS_ENDPOINT}" --dbprefix=wp_ --path=/var/www/html
-sudo -u www-data -k -- wp core install --url="${DUCKDNS_SUBDOMAIN2}" --title="MensAGL" --admin_user="${DB_USERNAME}" --admin_password="${DB_PASSWORD}" --admin_email="${EMAIL}" --path=/var/www/html
+sudo -u www-data -k -- wp core install --url="${DUCKDNS_SUBDOMAIN2}.duckdns.org" --title="MensAGL" --admin_user="${DB_USERNAME}" --admin_password="${DB_PASSWORD}" --admin_email="${EMAIL}" --path=/var/www/html
 
 # === Install WordPress Plugins ===
 PLUGINS=("supportcandy" "updraftplus" "user-registration" "wp-mail-smtp" "wps-hide-login")
