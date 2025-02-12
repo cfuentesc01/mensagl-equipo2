@@ -34,16 +34,16 @@ echo "Updating DuckDNS IP..."
 sleep 10
 
 
-while [ ! -e /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN2}.duckdns.org ]; do
-    sudo certbot certonly  --non-interactive \
-        --agree-tos \
-        --email "${EMAIL}" \
-        --preferred-challenges dns \
-        --authenticator dns-duckdns \
-        --dns-duckdns-token "${DUCKDNS_TOKEN}" \
-        --dns-duckdns-propagation-seconds 60 \
-        -d "${DUCKDNS_SUBDOMAIN2}.duckdns.org"
-done
+#while [ ! -e /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN2}.duckdns.org ]; do
+sudo certbot certonly  --non-interactive \
+    --agree-tos \
+    --email "${EMAIL}" \
+    --preferred-challenges dns \
+    --authenticator dns-duckdns \
+    --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+    --dns-duckdns-propagation-seconds 60 \
+    -d "${DUCKDNS_SUBDOMAIN2}.duckdns.org"
+#done
 
 
 cat <<EOF > /etc/nginx/sites-available/proxy_site
