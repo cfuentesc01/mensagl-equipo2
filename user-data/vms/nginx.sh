@@ -1,109 +1,288 @@
 #!/bin/bash
-set -e
+
+export DUCKDNS_TOKEN="${DUCKDNS_TOKEN}"
 export DUCKDNS_SUBDOMAIN="${DUCKDNS_SUBDOMAIN}"
-export DB_USERNAME="${DB_USERNAME}"
-export DB_PASSWORD="${DB_PASSWORD}"
+export EMAIL="${EMAIL}"
+export host="${host}"
+export request_uri="${request_uri}"
 
-sudo apt update -y
+# Update and install necessary packages
+sudo apt update && sudo  DEBIAN_FRONTEND=noninteractive apt install nginx-full python3-pip pipx -y
+sudo snap install --classic certbot
+sudo ln -s /snap/bin/certbot /usr/bin/certbot
+pip install certbot-dns-duckdns
+pipx install certbot-dns-duckdns
+sudo snap install --classic certbot
+sudo snap install certbot-dns-duckdns
+sudo snap set certbot trust-plugin-with-root=ok
+sudo snap connect certbot:plugin certbot-dns-duckdns
 
-sudo apt install prosody -y
-sudo apt install lua-dbi-mysql lua-dbi-postgresql lua-dbi-sqlite3 -y
-sudo rm -rf /etc/prosody/prosody.cfg.lua
 
-echo "
-plugin_paths = { '/usr/src/prosody-modules' } -- non-standard plugin path so we can keep them up to date with mercurial
-modules_enabled = {
-                'roster'; -- Allow users to have a roster. Recommended ;)
-                'saslauth'; -- Authentication for clients and servers. Recommended if you want to log in.
-                'tls'; -- Add support for secure TLS on c2s/s2s connections
-                'dialback'; -- s2s dialback support
-                'disco'; -- Service discovery
-                'private'; -- Private XML storage (for room bookmarks, etc.)
-                'vcard4'; -- User Profiles (stored in PEP)
-                'vcard_legacy'; -- Conversion between legacy vCard and PEP Avatar, vcard
-                'version'; -- Replies to server version requests
-                'uptime'; -- Report how long server has been running
-                'time'; -- Let others know the time here on this server
-                'ping'; -- Replies to XMPP pings with pongs
-                'register'; --Allows clients to register an account on your server
-                'pep'; -- Enables users to publish their mood, activity, playing music and more
-                'carbons'; -- XEP-0280: Message Carbons, synchronize messages accross devices
-                'smacks'; -- XEP-0198: Stream Management, keep chatting even when the network drops for a few seconds
-                'mam'; -- XEP-0313: Message Archive Management, allows to retrieve chat history from server
-                'csi_simple'; -- XEP-0352: Client State Indication
-                'admin_adhoc'; -- Allows administration via an XMPP client that supports ad-hoc commands
-                'blocklist'; -- XEP-0191  blocking of users
-                'bookmarks'; -- Synchronize currently joined groupchat between different clients.
-                'server_contact_info'; --add contact info in the case of issues with the server
-                --'cloud_notify'; -- Support for XEP-0357 Push Notifications for compatibility with ChatSecure/iOS.
-                -- iOS typically end the connection when an app runs in the background and requires use of Apple's Push servers to wake up and receive a message. Enabling this module allows your server to do that for your contacts on iOS.
-                -- However we leave it commented out as it is another example of vertically integrated cloud platforms at odds with federation, with all the meta-data-based surveillance consequences that that might have.
-                'bosh';
-                'websocket';
-                's2s_bidi';
-                's2s_whitelist';
-                's2sout_override';
-                'certs_s2soutinjection';
-                's2s_auth_certs';
-                's2s_auth_dane_in';
-                's2s';
-                'scansion_record';
-                'server_contact_info';
-};
-allow_registration = false; -- Enable to allow people to register accounts on your server from their clients, for more information see http://prosody.im/doc/creating_accounts
-certificates = '/etc/prosody/certs' -- Path where prosody looks for the certificates see: https://prosody.im/doc/letsencrypt
---https_certificate = 'certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.crt'
-c2s_require_encryption = true -- Force clients to use encrypted connections
-s2s_secure_auth = true
-s2s_secure_domains = { 'openfire-equipo45.duckdns.org' };
-pidfile = '/var/run/prosody/prosody.pid'
-authentication = 'internal_hashed'
-archive_expires_after = '1w' -- Remove archived messages after 1 week
-log = { --disable for extra privacy
-        info = '/var/log/prosody/prosody.log'; -- Change 'info' to 'debug' for verbose logging
-        error = '/var/log/prosody/prosody.err';
-        '*syslog';
+
+echo "Setting up DuckDNS update script..."
+mkdir -p /opt/duckdns
+cat <<DUCKDNS_SCRIPT > /opt/duckdns/duckdns.sh
+#!/bin/bash
+echo "Updating DuckDNS: ${DUCKDNS_SUBDOMAIN}"
+curl -k "https://www.duckdns.org/update?domains=${DUCKDNS_SUBDOMAIN}&token=${DUCKDNS_TOKEN}&ip=" -o /opt/duckdns/duck.log
+DUCKDNS_SCRIPT
+chmod +x /opt/duckdns/duckdns.sh
+(crontab -l 2>/dev/null; echo "*/5 * * * * /opt/duckdns/duckdns.sh >/dev/null 2>&1") | crontab -
+
+echo "Updating DuckDNS IP..."
+/opt/duckdns/duckdns.sh
+
+sleep 10
+
+while [ ! -e /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org ]; do
+    sudo certbot certonly  --non-interactive \
+        --agree-tos \
+        --email "${EMAIL}" \
+        --preferred-challenges dns \
+        --authenticator dns-duckdns \
+        --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+        --dns-duckdns-propagation-seconds 60 \
+        -d "${DUCKDNS_SUBDOMAIN}.duckdns.org"
+done
+while [ ! -e /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org-0001 ]; do
+    sudo certbot certonly  --non-interactive \
+        --agree-tos \
+        --email "${EMAIL}" \
+        --preferred-challenges dns \
+        --authenticator dns-duckdns \
+        --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+        --dns-duckdns-propagation-seconds 60 \
+        -d "*.${DUCKDNS_SUBDOMAIN}.duckdns.org"
+done
+
+
+# Install and configure NGINX
+echo "Installing and configuring NGINX..."
+
+cat <<EOF > /etc/nginx/sites-available/proxy_site
+upstream backend_meets {
+    server 10.0.3.100:443;
+    server 10.0.3.200:443;
+#    server 10.0.3.150:443;
 }
-    disco_items = { -- allows clients to find the capabilities of your server
-        {'upload.${DUCKDNS_SUBDOMAIN}.duckdns.org', 'file uploads'};
-        {'lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org', 'group chats'};
-}
-admin = { 'mario@${DUCKDNS_SUBDOMAIN}.duckdns.org' };
-VirtualHost '${DUCKDNS_SUBDOMAIN}.duckdns.org'
 
-storage = 'sql'
-sql = { driver = 'MySQL', database = 'xmpp_db', username = '${DB_USERNAME}', password = '${DB_PASSWORD}', host = '10.0.3.10' }
+upstream backend_xmpp {
+    server 10.0.3.100:12345;
+    server 10.0.3.200:12345;
+}
 
-ssl = {
-    certificate = 'certs/${DUCKDNS_SUBDOMAIN}.duckdns.org.crt',
-    key = 'certs/${DUCKDNS_SUBDOMAIN}.duckdns.org.key',
-}
-Component 'upload.${DUCKDNS_SUBDOMAIN}.duckdns.org' 'http_upload'
-ssl = {
-    certificate = '/etc/prosody/certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.crt',
-    key = '/etc/prosody/certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.key',
-}
-Component 'lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org' 'muc'
-ssl = {
-    certificate = '/etc/prosody/certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.crt',
-    key = '/etc/prosody/certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.key',
-}
-modules_enabled = { 'muc_mam', 'vcard_muc' } -- enable archives and avatars for group chats
-restrict_room_creation = 'admin'
-default_config = {persistent = false;}
-Component 'proxy.${DUCKDNS_SUBDOMAIN}.duckdns.org' 'proxy65'
-ssl = {
-    certificate = '/etc/prosody/certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.crt',
-    key = '/etc/prosody/certs/lobby.${DUCKDNS_SUBDOMAIN}.duckdns.org.key',
-}
-" | sudo tee -a /etc/prosody/prosody.cfg.lua > /dev/null 
+server {
+    listen 80;
+    server_name ${DUCKDNS_SUBDOMAIN}.duckdns.org upload.${DUCKDNS_SUBDOMAIN}.duckdns.org;
 
-sudo apt install mysql-client mysql-server -y
-sleep 360
-sudo mysql -h "10.0.3.10" -u "${DB_USERNAME}" -p"${DB_PASSWORD}" -e "CREATE DATABASE IF NOT EXISTS xmpp_db;"
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
 
-sudo systemctl restart prosody
-sudo prosodyctl register mario ${DUCKDNS_SUBDOMAIN}.duckdns.org Admin123
-sudo prosodyctl register carlos ${DUCKDNS_SUBDOMAIN}.duckdns.org Admin123
-sudo prosodyctl register dieguin ${DUCKDNS_SUBDOMAIN}.duckdns.org Admin123
-sudo prosodyctl register martin ${DUCKDNS_SUBDOMAIN}.duckdns.org Admin123
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+
+    location /llamadas {
+        return 301 https://\$host\$request_uri;
+    }
+
+    location /xmpp {
+        return 301 https://\$host\$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name ${DUCKDNS_SUBDOMAIN}.duckdns.org;
+
+    ssl_certificate /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org/privkey.pem;
+
+    # Redirect root (/) to /llamadas
+#    location / {
+#        return 301 https://\$host/llamadas;
+#    }
+
+    # Strip /llamadas before sending to Jitsi
+    location /llamadas/ {
+#    location / {
+        rewrite ^/llamadas(/.*)\$ \$1 break;
+        proxy_pass https://backend_meets;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    # Allow Jitsi static files (CSS, JS, images)
+    location /libs/ {
+        proxy_pass https://backend_meets;
+        proxy_set_header Host \$host;
+    }
+
+    location /css/ {
+        proxy_pass https://backend_meets;
+        proxy_set_header Host \$host;
+    }
+
+    location /static/ {
+        proxy_pass https://backend_meets;
+        proxy_set_header Host \$host;
+    }
+
+    location /images/ {
+        proxy_pass https://backend_meets;
+        proxy_set_header Host \$host;
+    }
+
+    location /sounds/ {
+        proxy_pass https://backend_meets;
+        proxy_set_header Host \$host;
+    }
+
+    location /xmpp {
+        proxy_pass http://backend_xmpp;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
+ln -s /etc/nginx/sites-available/proxy_site /etc/nginx/sites-enabled/
+rm /etc/nginx/sites-enabled/default
+rm /etc/nginx/sites-available/default
+
+# Add stream block to nginx.conf
+cat <<STREAM_CONF | sudo tee -a /etc/nginx/nginx.conf > /dev/null
+stream {
+    upstream backend_xmpp_5222 {
+        server 10.0.3.100:5222;
+        server 10.0.3.200:5222;
+    }
+
+    upstream backend_xmpp_5280 {
+        server 10.0.3.100:5280;
+        server 10.0.3.200:5280;
+    }
+
+    upstream backend_xmpp_5281 {
+        server 10.0.3.100:5281;
+        server 10.0.3.200:5281;
+    }
+
+    upstream backend_xmpp_5347 {
+        server 10.0.3.100:5347;
+        server 10.0.3.200:5347;
+    }
+
+    upstream backend_xmpp_4443 {
+        server 10.0.3.100:4443;
+        server 10.0.3.200:4443;
+    }
+
+    upstream backend_xmpp_10000 {
+        server 10.0.3.100:10000;
+        server 10.0.3.200:10000;
+    }
+
+    upstream backend_xmpp_5269 {
+        server 10.0.3.100:5269;
+        server 10.0.3.200:5269;
+    }
+    upstream backend_xmpp_5270 {
+        server 10.0.3.100:5270;
+        server 10.0.3.200:5270;
+    }
+    upstream backend_mysql {
+        server 10.0.3.10:3306;
+        server 10.0.3.20:3306;
+    }
+
+    server {
+        listen 5222;
+        proxy_pass backend_xmpp_5222;
+    }
+    server {
+        listen 5280;
+        proxy_pass backend_xmpp_5280;
+    }
+    server {
+        listen 5281;
+        proxy_pass backend_xmpp_5281;
+    }
+    server {
+        listen 5347;
+        proxy_pass backend_xmpp_5347;
+    }
+    server {
+        listen 4443;
+        proxy_pass backend_xmpp_4443;
+    }
+    server {
+        listen 10000;
+        proxy_pass backend_xmpp_10000;
+    }
+    server {
+        listen 5269;
+        proxy_pass backend_xmpp_5269;
+#       ssl_certificate /etc/letsencrypt/${DUCKDNS_SUBDOMAIN}.duckdns.org/fullchain.pem;
+#       ssl_certificate_key /etc/letsencrypt/${DUCKDNS_SUBDOMAIN}.duckdns.org/keyfile.pem;
+        proxy_ssl_verify off;
+    }
+    server {
+        listen 5270;
+        proxy_pass backend_xmpp_5270;
+#        ssl_certificate /etc/letsencrypt/${DUCKDNS_SUBDOMAIN}.duckdns.org/fullchain.pem;
+#        ssl_certificate_key /etc/letsencrypt/${DUCKDNS_SUBDOMAIN}.duckdns.org/keyfile.pem;
+        proxy_ssl_verify off;
+    }
+    server {
+        listen 3306;
+        proxy_pass backend_mysql;
+        proxy_timeout 600s;
+        proxy_connect_timeout 600s;
+    }
+}
+STREAM_CONF
+
+sudo systemctl start nginx
+sudo systemctl restart nginx
+systemctl enable nginx
+echo "DDNS installed !"
+
+
+
+
+cat <<CERT > /home/ubuntu/certs.sh
+#!/bin/bash
+sudo systemctl stop nginx
+sudo certbot certonly  --non-interactive \
+    --agree-tos \
+    --email "${EMAIL}" \
+    --preferred-challenges dns \
+    --authenticator dns-duckdns \
+    --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+    --dns-duckdns-propagation-seconds 120 \
+    -d "${DUCKDNS_SUBDOMAIN}.duckdns.org"
+sudo certbot certonly  --non-interactive \
+    --agree-tos \
+    --email "${EMAIL}" \
+    --preferred-challenges dns \
+    --authenticator dns-duckdns \
+    --dns-duckdns-token "${DUCKDNS_TOKEN}" \
+    --dns-duckdns-propagation-seconds 120 \
+    -d "*.${DUCKDNS_SUBDOMAIN}.duckdns.org"
+
+mkdir /home/ubuntu/certs
+mkdir -p /home/ubuntu/certs/wildcard
+
+sudo cp /etc/letsencrypt/live/${DUCKDNS_SUBDOMAIN}.duckdns.org/* /home/ubuntu/certs
+sudo cp /etc/letsencrypt/live/_.${DUCKDNS_SUBDOMAIN}.duckdns.org-0001/* /home/ubuntu/certs/wildcard
+sudo chown -R ubuntu:ubuntu /home/ubuntu/certs
+sudo chown -R ubuntu:ubuntu /home/ubuntu/certs/wildcard
+sudo systemctl start nginx
+sudo systemctl restart nginx
+CERT
+chmod +x /home/ubuntu/certs.sh
